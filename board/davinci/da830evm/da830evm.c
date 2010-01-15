@@ -36,6 +36,8 @@
 #include <i2c.h>
 #include <asm/arch/hardware.h>
 #include <asm/io.h>
+#include <nand.h>
+#include <asm/arch/nand_defs.h>
 #include "../common/misc.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -79,6 +81,54 @@ const struct pinmux_config i2c_pins[] = {
 	{ pinmux[8], 2, 3 },
 	{ pinmux[8], 2, 4 }
 };
+
+#ifdef CONFIG_USE_NAND
+const struct pinmux_config aemif_pins[] = {
+	{ pinmux[13], 1, 6 },
+	{ pinmux[13], 1, 7 },
+	{ pinmux[14], 1, 0 },
+	{ pinmux[14], 1, 1 },
+	{ pinmux[14], 1, 2 },
+	{ pinmux[14], 1, 3 },
+	{ pinmux[14], 1, 4 },
+	{ pinmux[14], 1, 5 },
+	{ pinmux[14], 1, 6 },
+	{ pinmux[14], 1, 7 },
+	{ pinmux[15], 1, 0 },
+	{ pinmux[15], 1, 1 },
+	{ pinmux[15], 1, 2 },
+	{ pinmux[15], 1, 3 },
+	{ pinmux[15], 1, 4 },
+	{ pinmux[15], 1, 5 },
+	{ pinmux[15], 1, 6 },
+	{ pinmux[15], 1, 7 },
+	{ pinmux[16], 1, 0 },
+	{ pinmux[16], 1, 1 },
+	{ pinmux[16], 1, 2 },
+	{ pinmux[16], 1, 3 },
+	{ pinmux[16], 1, 4 },
+	{ pinmux[16], 1, 5 },
+	{ pinmux[16], 1, 6 },
+	{ pinmux[16], 1, 7 },
+	{ pinmux[17], 1, 0 },
+	{ pinmux[17], 1, 1 },
+	{ pinmux[17], 1, 2 },
+	{ pinmux[17], 1, 3 },
+	{ pinmux[17], 1, 4 },
+	{ pinmux[17], 1, 5 },
+	{ pinmux[17], 1, 6 },
+	{ pinmux[17], 1, 7 },
+	{ pinmux[18], 1, 0 },
+	{ pinmux[18], 1, 1 },
+	{ pinmux[18], 1, 2 },
+	{ pinmux[18], 1, 3 },
+	{ pinmux[18], 1, 4 },
+	{ pinmux[18], 1, 5 },
+	{ pinmux[18], 1, 6 },
+	{ pinmux[18], 1, 7 },
+	{ pinmux[10], 1, 0 }
+};
+#endif
 
 int board_init(void)
 {
@@ -138,6 +188,11 @@ int board_init(void)
 		return 1;
 #endif
 
+#ifdef CONFIG_USE_NAND
+	if (davinci_configure_pin_mux(aemif_pins, ARRAY_SIZE(aemif_pins)) != 0)
+		return 1;
+#endif
+
 	/* enable the console UART */
 	writel((DAVINCI_UART_PWREMU_MGMT_FREE | DAVINCI_UART_PWREMU_MGMT_URRST |
 		DAVINCI_UART_PWREMU_MGMT_UTRST),
@@ -161,3 +216,12 @@ int misc_init_r(void)
 		printf("Ethernet switch start failed!\n");
 	}
 }
+
+#ifdef CONFIG_NAND_DAVINCI
+int board_nand_init(struct nand_chip *nand)
+{
+       davinci_nand_init(nand);
+
+       return 0;
+}
+#endif
