@@ -59,10 +59,25 @@ const struct pinmux_config uart_pins[] = {
 	{ pinmux[9], 2, 0 }
 };
 
+#ifdef CONFIG_DRIVER_TI_EMAC
+const struct pinmux_config emac_pins[] = {
+	{ pinmux[9], 0, 5 },
+	{ pinmux[10], 2, 1 },
+	{ pinmux[10], 2, 2 },
+	{ pinmux[10], 2, 3 },
+	{ pinmux[10], 2, 4 },
+	{ pinmux[10], 2, 5 },
+	{ pinmux[10], 2, 6 },
+	{ pinmux[10], 2, 7 },
+	{ pinmux[11], 2, 0 },
+	{ pinmux[11], 2, 1 }
+};
+#endif
+
 /* I2C pin muxer settings */
 const struct pinmux_config i2c_pins[] = {
-	{ pinmux[9], 2, 3 },
-	{ pinmux[9], 2, 4 }
+	{ pinmux[8], 2, 3 },
+	{ pinmux[8], 2, 4 }
 };
 
 int board_init(void)
@@ -118,10 +133,31 @@ int board_init(void)
 	if (davinci_configure_pin_mux(i2c_pins, ARRAY_SIZE(i2c_pins)) != 0)
 		return 1;
 
+#ifdef CONFIG_DRIVER_TI_EMAC
+	if (davinci_configure_pin_mux(emac_pins, ARRAY_SIZE(emac_pins)) != 0)
+		return 1;
+#endif
+
 	/* enable the console UART */
 	writel((DAVINCI_UART_PWREMU_MGMT_FREE | DAVINCI_UART_PWREMU_MGMT_URRST |
 		DAVINCI_UART_PWREMU_MGMT_UTRST),
 	       &davinci_uart2_ctrl_regs->pwremu_mgmt);
 
 	return(0);
+}
+
+int misc_init_r(void)
+{
+	uint8_t eeprom_enetaddr[6], tmp[2];
+
+	/* Read Ethernet MAC address from EEPROM if available. */
+	if (dvevm_read_mac_address(eeprom_enetaddr))
+		dv_configure_mac_address(eeprom_enetaddr);
+
+	tmp[0] = 0x01;
+	tmp[1] = 0x23;
+
+	if(i2c_write(0x5f, 0, 0, tmp, 2)) {
+		printf("Ethernet switch start failed!\n");
+	}
 }

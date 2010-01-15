@@ -86,8 +86,10 @@
 /*
  * Network & Ethernet Configuration
  */
+#define	CONFIG_DRIVER_TI_EMAC
 #ifdef CONFIG_DRIVER_TI_EMAC
 #define CONFIG_MII
+#define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
@@ -155,7 +157,7 @@
  * U-Boot general configuration
  */
 #undef CONFIG_USE_IRQ			/* No IRQ/FIQ in U-Boot */
-#undef CONFIG_MISC_INIT_R
+#define CONFIG_MISC_INIT_R
 #undef CONFIG_BOOTDELAY
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
 #define CONFIG_SYS_PROMPT	"DA830-evm > " /* Command Prompt */
