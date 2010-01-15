@@ -205,6 +205,8 @@ int misc_init_r(void)
 {
 	uint8_t eeprom_enetaddr[6], tmp[2];
 
+	printf ("ARM Clock : %d Hz\n", clk_get(DAVINCI_ARM_CLKID));
+
 	/* Read Ethernet MAC address from EEPROM if available. */
 	if (dvevm_read_mac_address(eeprom_enetaddr))
 		dv_configure_mac_address(eeprom_enetaddr);
