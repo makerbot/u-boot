@@ -28,6 +28,7 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(BOARD).a
 
 COBJS-$(CONFIG_MACH_DAVINCI_DA830_EVM)	+= da830evm.o
+COBJS-$(CONFIG_MACH_DAVINCI_DA850_EVM)	+= da850evm.o
 
 COBJS   := $(sort $(COBJS-y))
 

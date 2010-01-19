@@ -134,7 +134,7 @@ typedef volatile unsigned int *	dv_reg_p;
 #define DAVINCI_PSC1_BASE			0x01e27000
 #define DAVINCI_SPI0_BASE			0x01c41000
 #define DAVINCI_USB_OTG_BASE			0x01e00000
-#define DAVINCI_SPI1_BASE			0x01e12000
+#define DAVINCI_SPI1_BASE			(cpu_is_da830() ? 0x01e12000 : 0x01f0e000)
 #define DAVINCI_GPIO_BASE			0x01e26000
 #define DAVINCI_EMAC_CNTRL_REGS_BASE		0x01e23000
 #define DAVINCI_EMAC_WRAPPER_CNTRL_REGS_BASE	0x01e22000
@@ -151,6 +151,7 @@ typedef volatile unsigned int *	dv_reg_p;
 #define DAVINCI_INTC_BASE			0xfffee000
 #define DAVINCI_BOOTCFG_BASE			0x01c14000
 #define JTAG_ID_REG				(DAVINCI_BOOTCFG_BASE + 0x18)
+#define CFGCHIP3				(DAVINCI_BOOTCFG_BASE + 0x188)
 
 #endif /* CONFIG_SOC_DA8XX */
 
@@ -365,6 +366,15 @@ struct davinci_pllc_regs {
 #define davinci_pllc_regs ((struct davinci_pllc_regs *)DAVINCI_PLL_CNTRL0_BASE)
 #define DAVINCI_PLLC_DIV_MASK	0x1f
 
+#define ASYNC3			get_async3_src()
+#define EMIFB			get_emifb_src()
+#define PLL1_PLLM		((1 << 16) | DAVINCI_PLLM_CLKID)
+#define PLL1_SYSCLK1		((1 << 16) | 0x1)
+#define PLL1_SYSCLK2		((1 << 16) | 0x2)
+
+#define DAVINCI_SPI1_CLKID	(cpu_is_da830() ? 2 : ASYNC3)
+#define DAVINCI_DDR_CLKID	EMIFB
+
 /* Clock IDs */
 enum davinci_clk_ids {
 	DAVINCI_SPI0_CLKID = 2,
@@ -400,6 +410,7 @@ struct davinci_syscfg_regs {
 #define DAVINCI_SYSCFG_SUSPSRC_EMAC		(1 << 5)
 #define DAVINCI_SYSCFG_SUSPSRC_I2C		(1 << 16)
 #define DAVINCI_SYSCFG_SUSPSRC_SPI0		(1 << 21)
+#define DAVINCI_SYSCFG_SUSPSRC_SPI1		(1 << 22)
 #define DAVINCI_SYSCFG_SUSPSRC_UART2		(1 << 20)
 #define DAVINCI_SYSCFG_SUSPSRC_TIMER0		(1 << 27)
 
@@ -456,6 +467,16 @@ static inline int cpu_is_da850(void)
 	unsigned short part_no	= (jtag_id >> 12) & 0xffff;
 
 	return ((part_no == 0xb7d1) ? 1 : 0);
+}
+
+static inline int get_async3_src(void)
+{
+	return ((REG(CFGCHIP3) & 0x10) ? PLL1_SYSCLK2 : 2);
+}
+
+static inline int get_emifb_src(void)
+{
+	return ((REG(CFGCHIP3) & 0x80) ? PLL1_PLLM : PLL1_SYSCLK1);
 }
 
 #endif /* CONFIG_SOC_DA8XX */
