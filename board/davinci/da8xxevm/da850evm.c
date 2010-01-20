@@ -111,6 +111,54 @@ const struct pinmux_config aemif_pins[] = {
 	{ pinmux[12], 1, 5 },
 	{ pinmux[12], 1, 6 }
 };
+#elif defined(CONFIG_SYS_USE_NOR)
+const struct pinmux_config nor_pins[] = {
+	{ pinmux[5], 1, 6 },
+	{ pinmux[6], 1, 6 },
+	{ pinmux[7], 1, 0 },
+	{ pinmux[7], 1, 4 },
+	{ pinmux[7], 1, 5 },
+	{ pinmux[8], 1, 0 },
+	{ pinmux[8], 1, 1 },
+	{ pinmux[8], 1, 2 },
+	{ pinmux[8], 1, 3 },
+	{ pinmux[8], 1, 4 },
+	{ pinmux[8], 1, 5 },
+	{ pinmux[8], 1, 6 },
+	{ pinmux[8], 1, 7 },
+	{ pinmux[9], 1, 0 },
+	{ pinmux[9], 1, 1 },
+	{ pinmux[9], 1, 2 },
+	{ pinmux[9], 1, 3 },
+	{ pinmux[9], 1, 4 },
+	{ pinmux[9], 1, 5 },
+	{ pinmux[9], 1, 6 },
+	{ pinmux[9], 1, 7 },
+	{ pinmux[10], 1, 0 },
+	{ pinmux[10], 1, 1 },
+	{ pinmux[10], 1, 2 },
+	{ pinmux[10], 1, 3 },
+	{ pinmux[10], 1, 4 },
+	{ pinmux[10], 1, 5 },
+	{ pinmux[10], 1, 6 },
+	{ pinmux[10], 1, 7 },
+	{ pinmux[11], 1, 0 },
+	{ pinmux[11], 1, 1 },
+	{ pinmux[11], 1, 2 },
+	{ pinmux[11], 1, 3 },
+	{ pinmux[11], 1, 4 },
+	{ pinmux[11], 1, 5 },
+	{ pinmux[11], 1, 6 },
+	{ pinmux[11], 1, 7 },
+	{ pinmux[12], 1, 0 },
+	{ pinmux[12], 1, 1 },
+	{ pinmux[12], 1, 2 },
+	{ pinmux[12], 1, 3 },
+	{ pinmux[12], 1, 4 },
+	{ pinmux[12], 1, 5 },
+	{ pinmux[12], 1, 6 },
+	{ pinmux[12], 1, 7 }
+};
 #endif
 
 int board_init(void)
@@ -178,6 +226,9 @@ int board_init(void)
 
 #ifdef CONFIG_USE_NAND
 	if (davinci_configure_pin_mux(aemif_pins, ARRAY_SIZE(aemif_pins)) != 0)
+		return 1;
+#elif defined(CONFIG_SYS_USE_NOR)
+	if (davinci_configure_pin_mux(nor_pins, ARRAY_SIZE(nor_pins)) != 0)
 		return 1;
 #endif
 
