@@ -130,6 +130,11 @@ const struct pinmux_config aemif_pins[] = {
 };
 #endif
 
+/* USB0_DRVVBUS pin muxer settings */
+const struct pinmux_config usb_pins[] = {
+	{ pinmux[9], 1, 1 }
+};
+
 int board_init(void)
 {
 #ifndef CONFIG_USE_IRQ
@@ -192,6 +197,9 @@ int board_init(void)
 	if (davinci_configure_pin_mux(aemif_pins, ARRAY_SIZE(aemif_pins)) != 0)
 		return 1;
 #endif
+
+	if (davinci_configure_pin_mux(usb_pins, ARRAY_SIZE(usb_pins)) != 0)
+		return 1;
 
 	/* enable the console UART */
 	writel((DAVINCI_UART_PWREMU_MGMT_FREE | DAVINCI_UART_PWREMU_MGMT_URRST |
