@@ -27,6 +27,7 @@ LIB	:= $(obj)libusb_musb.a
 
 COBJS-$(CONFIG_MUSB_HCD) += musb_hcd.o musb_core.o
 COBJS-$(CONFIG_USB_DAVINCI) += davinci.o
+COBJS-$(CONFIG_USB_DA8XX) += da8xx.o
 
 COBJS	:= $(COBJS-y)
 SRCS	:= $(COBJS:.o=.c)
