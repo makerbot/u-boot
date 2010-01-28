@@ -158,6 +158,11 @@
 #define CONFIG_SYS_NO_FLASH
 #endif
 
+/*
+ * USB  configuration
+ */
+#define CONFIG_USB_DA8XX      /* Platform hookup to MUSB controller */
+#define CONFIG_MUSB_HCD
 
 /*
  * U-Boot general configuration
@@ -238,5 +243,36 @@
 #undef CONFIG_CMD_FLASH
 #undef CONFIG_CMD_ENV
 #endif
+
+#ifdef CONFIG_USB_DA8XX
+
+#ifdef CONFIG_MUSB_HCD
+#define CONFIG_CMD_USB		/* inclue support for usb       */
+
+#define CONFIG_USB_STORAGE	/* MSC class support */
+#define CONFIG_CMD_STORAGE	/* inclue support for usb       */
+#define CONFIG_CMD_FAT		/* inclue support for FAT/storage*/
+#define CONFIG_DOS_PARTITION	/* inclue support for FAT/storage*/
+
+#ifdef CONFIG_USB_KEYBOARD
+#define CONFIG_SYS_USB_EVENT_POLL
+#define CONFIG_PREBOOT "usb start"
+#endif /* CONFIG_USB_KEYBOARD */
+
+#endif /* CONFIG_MUSB_HCD */
+
+#ifdef CONFIG_MUSB_UDC
+/* USB device configuration */
+#define CONFIG_USB_DEVICE		1
+#define CONFIG_USB_TTY			1
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV	1
+/* Change these to suit your needs */
+#define CONFIG_USBD_VENDORID		0x0451
+#define CONFIG_USBD_PRODUCTID		0x5678
+#define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
+#define CONFIG_USBD_PRODUCT_NAME	"DA850EVM"
+#endif /* CONFIG_MUSB_UDC */
+
+#endif /* CONFIG_USB_DA8XX */
 
 #endif /* __CONFIG_H */
