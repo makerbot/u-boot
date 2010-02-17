@@ -192,8 +192,8 @@
 #define LINUX_BOOT_PARAM_ADDR	(CONFIG_SYS_MEMTEST_START + 0x100)
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTARGS		"mem=32M console=ttyS2,115200n8 root=/dev/ram0 rw initrd=0xc1180000,4M ip=off"
-#define CONFIG_BOOTCOMMAND	"sf probe 0;sf read 0xc0700000 0x80000 0x200000;sf read 0xc1180000 0x280000 0x300000;bootm 0xc0700000"
+#define CONFIG_BOOTARGS		"mem=32M console=ttyS2,115200n8 root=/dev/mmcblk0p1 rw rootwait ip=off"
+#define CONFIG_BOOTCOMMAND	"sf probe 0;sf read 0xc0700000 0x80000 0x220000;bootm 0xc0700000"
 #define CONFIG_BOOTDELAY	3
 
 /*
