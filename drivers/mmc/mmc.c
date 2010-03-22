@@ -70,27 +70,12 @@ struct mmc *find_mmc_device(int dev_num)
 	return NULL;
 }
 
-static ulong
-mmc_bwrite(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
+static int mmc_write_block(struct mmc *mmc, const char *src, uint blocknum,
+		uint blkcnt)
 {
+	int err;
 	struct mmc_cmd cmd;
 	struct mmc_data data;
-	int err;
-	int stoperr = 0;
-	struct mmc *mmc = find_mmc_device(dev_num);
-	int blklen;
-
-	if (!mmc)
-		return -1;
-
-	blklen = mmc->write_bl_len;
-
-	err = mmc_set_blocklen(mmc, mmc->write_bl_len);
-
-	if (err) {
-		printf("set write bl len failed\n\r");
-		return err;
-	}
 
 	if (blkcnt > 1)
 		cmd.cmdidx = MMC_CMD_WRITE_MULTIPLE_BLOCK;
@@ -98,42 +83,82 @@ mmc_bwrite(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
 		cmd.cmdidx = MMC_CMD_WRITE_SINGLE_BLOCK;
 
 	if (mmc->high_capacity)
-		cmd.cmdarg = start;
+		cmd.cmdarg = blocknum;
 	else
-		cmd.cmdarg = start * blklen;
+		cmd.cmdarg = blocknum * mmc->write_bl_len;
 
 	cmd.resp_type = MMC_RSP_R1;
 	cmd.flags = 0;
 
 	data.src = src;
 	data.blocks = blkcnt;
-	data.blocksize = blklen;
+	data.blocksize = mmc->write_bl_len;
 	data.flags = MMC_DATA_WRITE;
 
 	err = mmc_send_cmd(mmc, &cmd, &data);
-
-	if (err) {
-		printf("mmc write failed\n\r");
+	if (err)
 		return err;
-	}
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
 		cmd.cmdarg = 0;
 		cmd.resp_type = MMC_RSP_R1b;
 		cmd.flags = 0;
-		stoperr = mmc_send_cmd(mmc, &cmd, NULL);
+		err = mmc_send_cmd(mmc, &cmd, NULL);
+	}
+
+	return err;
+}
+
+static ulong
+mmc_bwrite(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
+{
+	int err;
+	int i;
+	struct mmc *mmc = find_mmc_device(dev_num);
+#ifdef CONFIG_MMC_MBLOCK
+	uint b_max = mmc->b_max;
+#else
+	uint b_max = 1;
+#endif
+
+	if (!mmc)
+		return 0;
+
+	/* We always do full block reads from the card */
+	err = mmc_set_blocklen(mmc, mmc->write_bl_len);
+
+	if (err) {
+		return 0;
+	}
+
+	for (i = blkcnt; i > 0; i -= b_max) {
+		uint blocks = (i > b_max) ? b_max : i;
+
+		err = mmc_write_block(mmc, src, start, blocks);
+		if (err) {
+			printf("block write failed: %d\n", err);
+			return blkcnt - i;
+		}
+		start += blocks;
+		src += (mmc->write_bl_len * blocks);
 	}
 
 	return blkcnt;
+
 }
 
-int mmc_read_block(struct mmc *mmc, void *dst, uint blocknum)
+static int
+mmc_read_block(struct mmc *mmc, void *dst, uint blocknum, uint blkcnt)
 {
+	int err;
 	struct mmc_cmd cmd;
 	struct mmc_data data;
 
-	cmd.cmdidx = MMC_CMD_READ_SINGLE_BLOCK;
+	if (blkcnt > 1)
+		cmd.cmdidx = MMC_CMD_READ_MULTIPLE_BLOCK;
+	else
+		cmd.cmdidx = MMC_CMD_READ_SINGLE_BLOCK;
 
 	if (mmc->high_capacity)
 		cmd.cmdarg = blocknum;
@@ -144,70 +169,37 @@ int mmc_read_block(struct mmc *mmc, void *dst, uint blocknum)
 	cmd.flags = 0;
 
 	data.dest = dst;
-	data.blocks = 1;
+	data.blocks = blkcnt;
 	data.blocksize = mmc->read_bl_len;
 	data.flags = MMC_DATA_READ;
 
-	return mmc_send_cmd(mmc, &cmd, &data);
-}
-
-int mmc_read(struct mmc *mmc, u64 src, uchar *dst, int size)
-{
-	char *buffer;
-	int i;
-	int blklen = mmc->read_bl_len;
-	int startblock = lldiv(src, mmc->read_bl_len);
-	int endblock = lldiv(src + size - 1, mmc->read_bl_len);
-	int err = 0;
-
-	/* Make a buffer big enough to hold all the blocks we might read */
-	buffer = malloc(blklen);
-
-	if (!buffer) {
-		printf("Could not allocate buffer for MMC read!\n");
-		return -1;
-	}
-
-	/* We always do full block reads from the card */
-	err = mmc_set_blocklen(mmc, mmc->read_bl_len);
-
-	if (err)
+	err = mmc_send_cmd(mmc, &cmd, &data);
+	if (err) {
 		return err;
-
-	for (i = startblock; i <= endblock; i++) {
-		int segment_size;
-		int offset;
-
-		err = mmc_read_block(mmc, buffer, i);
-
-		if (err)
-			goto free_buffer;
-
-		/*
-		 * The first block may not be aligned, so we
-		 * copy from the desired point in the block
-		 */
-		offset = (src & (blklen - 1));
-		segment_size = MIN(blklen - offset, size);
-
-		memcpy(dst, buffer + offset, segment_size);
-
-		dst += segment_size;
-		src += segment_size;
-		size -= segment_size;
 	}
 
-free_buffer:
-	free(buffer);
+	if (blkcnt > 1) {
+		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
+		cmd.cmdarg = 0;
+		cmd.resp_type = MMC_RSP_R1b;
+		cmd.flags = 0;
+		err = mmc_send_cmd(mmc, &cmd, NULL);
+	}
 
 	return err;
 }
 
-static ulong mmc_bread(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
+static ulong
+mmc_bread(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
 {
 	int err;
 	int i;
 	struct mmc *mmc = find_mmc_device(dev_num);
+#ifdef CONFIG_MMC_MBLOCK
+	uint b_max = mmc->b_max;
+#else
+	uint b_max = 1;
+#endif
 
 	if (!mmc)
 		return 0;
@@ -219,13 +211,16 @@ static ulong mmc_bread(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
 		return 0;
 	}
 
-	for (i = start; i < start + blkcnt; i++, dst += mmc->read_bl_len) {
-		err = mmc_read_block(mmc, dst, i);
+	for (i = blkcnt; i > 0; i -= b_max) {
+		uint blocks = (i > b_max) ? b_max : i;
 
+		err = mmc_read_block(mmc, dst, start, blocks);
 		if (err) {
 			printf("block read failed: %d\n", err);
-			return i - start;
+			return blkcnt - i;
 		}
+		start += blocks;
+		dst += (mmc->read_bl_len * blocks);
 	}
 
 	return blkcnt;
@@ -836,6 +831,10 @@ int mmc_register(struct mmc *mmc)
 	mmc->block_dev.block_read = mmc_bread;
 	mmc->block_dev.block_write = mmc_bwrite;
 
+#ifdef CONFIG_MMC_MBLOCK
+	if (mmc->b_max == 0)
+		mmc->b_max = 1;
+#endif
 	INIT_LIST_HEAD (&mmc->link);
 
 	list_add_tail (&mmc->link, &mmc_devices);
