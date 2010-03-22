@@ -120,6 +120,7 @@ typedef volatile unsigned int *	dv_reg_p;
 
 #else /* CONFIG_SOC_DA8XX */
 
+#define DAVINCI_MMC_SD0_BASE			0x01c40000
 #define DAVINCI_UART0_BASE			0x01c42000
 #define DAVINCI_UART1_BASE			0x01d0c000
 #define DAVINCI_UART2_BASE			0x01d0d000
@@ -385,6 +386,7 @@ struct davinci_pllc_regs {
 
 /* Clock IDs */
 enum davinci_clk_ids {
+	DAVINCI_MMCSD_CLKID = 2,
 	DAVINCI_SPI0_CLKID = 2,
 	DAVINCI_UART2_CLKID = 2,
 	DAVINCI_MDIO_CLKID = 4,
