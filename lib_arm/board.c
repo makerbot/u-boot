@@ -335,6 +335,11 @@ void start_armboot (void)
 	nand_init();		/* go init the NAND */
 #endif
 
+#ifdef CONFIG_GENERIC_MMC
+       puts ("MMC:   ");
+       mmc_initialize (gd->bd);
+#endif
+
 #if defined(CONFIG_CMD_ONENAND)
 	onenand_init();
 #endif
@@ -414,11 +419,6 @@ extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
 
 #ifdef BOARD_LATE_INIT
 	board_late_init ();
-#endif
-
-#ifdef CONFIG_GENERIC_MMC
-	puts ("MMC:   ");
-	mmc_initialize (gd->bd);
 #endif
 
 #ifdef CONFIG_BITBANGMII
