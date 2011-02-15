@@ -2937,6 +2937,9 @@ da850_omapl138_evm_config	\
 da850evm_config:	unconfig
 	@$(MKCONFIG) -a da850evm arm arm926ejs da8xxevm davinci davinci
 
+mb_proto_config:	unconfig
+	@$(MKCONFIG) -a mb_proto arm arm926ejs da8xxevm davinci davinci
+
 da830_omapl137_evm_config	\
 da830evm_config:	unconfig
 	@$(MKCONFIG) -a da830evm arm arm926ejs da8xxevm davinci davinci
