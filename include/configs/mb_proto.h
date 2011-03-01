@@ -34,7 +34,7 @@
 /*
  * SoC Configuration
  */
-#define CONFIG_MACH_DAVINCI_DA850_EVM
+#define CONFIG_MACH_DAVINCI_MB_PROTO
 #define CONFIG_ARM926EJS		/* arm926ejs CPU core */
 #define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
@@ -292,8 +292,8 @@
 /* Change these to suit your needs */
 #define CONFIG_USBD_VENDORID		0x0451
 #define CONFIG_USBD_PRODUCTID		0x5678
-#define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
-#define CONFIG_USBD_PRODUCT_NAME	"DA850EVM"
+#define CONFIG_USBD_MANUFACTURER	"Makerbot Industries"
+#define CONFIG_USBD_PRODUCT_NAME	"Proto 0"
 #endif /* CONFIG_MUSB_UDC */
 
 #endif /* CONFIG_USB_DA8XX */
