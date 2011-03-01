@@ -206,7 +206,7 @@ int board_init(void)
 #endif
 
 	/* arch number of the board */
-	gd->bd->bi_arch_number = MACH_TYPE_DAVINCI_DA850_EVM;
+	gd->bd->bi_arch_number = MACH_TYPE_DAVINCI_MB_PROTO;
 
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = LINUX_BOOT_PARAM_ADDR;
