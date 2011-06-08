@@ -220,7 +220,7 @@ int board_init(void)
 	lpsc_on(DAVINCI_LPSC_AEMIF);    /* NAND, NOR */
 	lpsc_on(DAVINCI_LPSC_SPI1);     /* Serial Flash */
 	lpsc_on(DAVINCI_LPSC_EMAC);     /* image download */
-	lpsc_on(DAVINCI_LPSC_UART2);    /* console */
+	lpsc_on(DAVINCI_LPSC_UART1);    /* console */
 	lpsc_on(DAVINCI_LPSC_GPIO);
 #ifdef CONFIG_DAVINCI_MMC
 	lpsc_on(DAVINCI_LPSC_MMC_SD);
@@ -230,7 +230,7 @@ int board_init(void)
 	writel(readl(&davinci_syscfg_regs->suspsrc) &
 	       ~(DAVINCI_SYSCFG_SUSPSRC_EMAC | DAVINCI_SYSCFG_SUSPSRC_I2C |
 		 DAVINCI_SYSCFG_SUSPSRC_SPI1 | DAVINCI_SYSCFG_SUSPSRC_TIMER0 |
-		 DAVINCI_SYSCFG_SUSPSRC_UART2),
+		 DAVINCI_SYSCFG_SUSPSRC_UART1),
 	       &davinci_syscfg_regs->suspsrc);
 
 #ifdef CONFIG_SPI_FLASH
@@ -272,7 +272,7 @@ int board_init(void)
 	/* enable the console UART */
 	writel((DAVINCI_UART_PWREMU_MGMT_FREE | DAVINCI_UART_PWREMU_MGMT_URRST |
 		DAVINCI_UART_PWREMU_MGMT_UTRST),
-	       &davinci_uart2_ctrl_regs->pwremu_mgmt);
+	       &davinci_uart1_ctrl_regs->pwremu_mgmt);
 
 	return(0);
 }
