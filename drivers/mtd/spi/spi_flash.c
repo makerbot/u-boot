@@ -117,14 +117,22 @@ struct spi_flash *spi_flash_probe(unsigned int bus, unsigned int cs,
 	}
 
 	/* Read the ID codes */
+#ifndef CONFIG_SPI_FLASH_ALTERNATE_PROBE
 	ret = spi_flash_cmd(spi, CMD_READ_ID, &idcode, sizeof(idcode));
+#else
+	ret = spi_flash_cmd(spi, CMD_ALTERNATE_READ_ID, &idcode, sizeof(idcode));
+#endif
 	if (ret)
 		goto err_read_id;
 
 	debug("SF: Got idcode %02x %02x %02x %02x %02x\n", idcode[0],
 			idcode[1], idcode[2], idcode[3], idcode[4]);
 
+#ifndef CONFIG_SPI_FLASH_ALTERNATE_PROBE
 	switch (idcode[0]) {
+#else
+	switch (idcode[3]) {
+#endif
 #ifdef CONFIG_SPI_FLASH_SPANSION
 	case 0x01:
 		flash = spi_flash_probe_spansion(spi, idcode);

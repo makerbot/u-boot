@@ -14,6 +14,7 @@
 
 /* Common commands */
 #define CMD_READ_ID			0x9f
+#define CMD_ALTERNATE_READ_ID           0x90
 
 #define CMD_READ_ARRAY_SLOW		0x03
 #define CMD_READ_ARRAY_FAST		0x0b

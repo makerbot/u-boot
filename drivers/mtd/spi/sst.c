@@ -55,6 +55,10 @@ static inline struct sst_spi_flash *to_sst_spi_flash(struct spi_flash *flash)
 #define SST_SECTOR_SIZE (4 * 1024)
 static const struct sst_spi_flash_params sst_spi_flash_table[] = {
 	{
+		.idcode1 = 0x43,
+		.nr_sectors = 512,
+		.name = "SST25VF020",
+	},{
 		.idcode1 = 0x8d,
 		.nr_sectors = 128,
 		.name = "SST25VF040B",
@@ -340,8 +344,13 @@ spi_flash_probe_sst(struct spi_slave *spi, u8 *idcode)
 
 	for (i = 0; i < ARRAY_SIZE(sst_spi_flash_table); ++i) {
 		params = &sst_spi_flash_table[i];
+#ifndef CONFIG_SPI_FLASH_ALTERNATE_PROBE
 		if (params->idcode1 == idcode[2])
 			break;
+#else
+		if (params->idcode1 == idcode[4])
+			break;
+#endif
 	}
 
 	if (i == ARRAY_SIZE(sst_spi_flash_table)) {
