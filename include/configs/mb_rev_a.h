@@ -298,7 +298,5 @@
 #endif /* CONFIG_MUSB_UDC */
 
 #endif /* CONFIG_USB_DA8XX */
-
 #define DEBUG 1
-
 #endif /* __CONFIG_H */
