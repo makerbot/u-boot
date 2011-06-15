@@ -153,9 +153,9 @@
 #undef CONFIG_ENV_IS_IN_FLASH
 #undef CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_IS_IN_SPI_FLASH
-#define CONFIG_ENV_SIZE			(32 << 10)
+#define CONFIG_ENV_SIZE			(16 << 10)
 #define CONFIG_ENV_OFFSET		(224 << 10)
-#define CONFIG_ENV_SECT_SIZE		(32 << 10)	
+#define CONFIG_ENV_SECT_SIZE		(16 << 10)	
 #define CONFIG_SYS_NO_FLASH
 #endif
 
@@ -298,5 +298,5 @@
 #endif /* CONFIG_MUSB_UDC */
 
 #endif /* CONFIG_USB_DA8XX */
-#define DEBUG 1
+
 #endif /* __CONFIG_H */
