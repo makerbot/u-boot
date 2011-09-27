@@ -42,12 +42,16 @@
 #include <miiphy.h>
 #include <malloc.h>
 #include <asm/arch/emac_defs.h>
+#include <asm/arch/hardware.h>
+#include "../../../board/davinci/common/misc.h"
+
+#define pinmux  &davinci_syscfg_regs->pinmux
 
 #ifdef CONFIG_DRIVER_TI_EMAC
 
 #ifdef CONFIG_CMD_NET
 
-unsigned int	emac_dbg = 0;
+unsigned int	emac_dbg = 1;
 #define debug_emac(fmt,args...)	if (emac_dbg) printf(fmt,##args)
 
 static void davinci_eth_mdio_enable(void);
@@ -56,6 +60,30 @@ static int gen_init_phy(int phy_addr);
 static int gen_is_phy_connected(int phy_addr);
 static int gen_get_link_status(int phy_addr);
 static int gen_auto_negotiate(int phy_addr);
+
+
+void mdc_as_gpio(void)
+{
+	// Configure MDC pin as GPIO
+	const struct pinmux_config mdio_mdc_pins[] = {
+		{ pinmux[4], 4, 0},
+	};
+
+	debug_emac("- Remuxing MDIO clock to be GPIO low\n");
+        davinci_configure_pin_mux(mdio_mdc_pins, ARRAY_SIZE(mdio_mdc_pins));
+}
+
+void mdc_as_mdc(void)
+{
+	// Configure MDC pin as MDC
+	const struct pinmux_config mdio_mdc_pins[] = {
+		{ pinmux[4], 8, 0},
+	};
+
+	debug_emac("- Remuxing MDIO clock to be clock\n");
+        davinci_configure_pin_mux(mdio_mdc_pins, ARRAY_SIZE(mdio_mdc_pins));
+}
+
 
 void eth_mdio_enable(void)
 {
@@ -168,6 +196,11 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 {
 	int	tmp;
 
+	mdc_as_mdc();
+
+	debug_emac("davinci_eth_phy_read phy_addr:%i reg_num:%i\n",
+		phy_addr, reg_num);
+
 	while (adap_mdio->USERACCESS0 & MDIO_USERACCESS0_GO) {;}
 
 	adap_mdio->USERACCESS0 = MDIO_USERACCESS0_GO |
@@ -175,13 +208,22 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 				((reg_num & 0x1f) << 21) |
 				((phy_addr & 0x1f) << 16);
 
+	debug_emac("Waiting for response...");
+
 	/* Wait for command to complete */
 	while ((tmp = adap_mdio->USERACCESS0) & MDIO_USERACCESS0_GO) {;}
 
 	if (tmp & MDIO_USERACCESS0_ACK) {
 		*data = tmp & 0xffff;
+
+		debug_emac("Response ok: %x\n", *data);
+
 		return(1);
 	}
+
+	debug_emac("Response bad!\n");
+
+	mdc_as_gpio();
 
 	*data = -1;
 	return(0);
@@ -190,17 +232,27 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 /* Write to a PHY register via MDIO inteface. Blocks until operation is complete. */
 int davinci_eth_phy_write(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t data)
 {
+	mdc_as_mdc();
+
+	debug_emac("davinci_eth_phy_write phy_addr:%i reg_num:%i data:%x\n",
+		phy_addr, reg_num, data);
 
 	while (adap_mdio->USERACCESS0 & MDIO_USERACCESS0_GO) {;}
-
+	
 	adap_mdio->USERACCESS0 = MDIO_USERACCESS0_GO |
 				MDIO_USERACCESS0_WRITE_WRITE |
 				((reg_num & 0x1f) << 21) |
 				((phy_addr & 0x1f) << 16) |
 				(data & 0xffff);
 
+	debug_emac("Waiting for response...");
+
 	/* Wait for command to complete */
 	while (adap_mdio->USERACCESS0 & MDIO_USERACCESS0_GO) {;}
+
+	debug_emac("Complete!\n");
+
+	mdc_as_gpio();
 
 	return(1);
 }
@@ -263,6 +315,8 @@ static int gen_auto_negotiate(int phy_addr)
 	u_int16_t	tmp, val;
 	unsigned long cntr = 0;
 
+	debug_emac("Auto-negotiating link...\n");	
+
 	if (!davinci_eth_phy_read(phy_addr, PHY_BMCR, &tmp))
 		return(0);
 
@@ -312,6 +366,7 @@ static int davinci_mii_phy_write(char *devname, unsigned char addr, unsigned cha
 }
 
 #endif
+
 
 /* Eth device open */
 static int davinci_eth_open(struct eth_device *dev, bd_t *bis)
@@ -413,7 +468,7 @@ static int davinci_eth_open(struct eth_device *dev, bd_t *bis)
 
 	/* Init MDIO & get link state */
 	clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
-	adap_mdio->CONTROL = ((clkdiv & 0xff) | MDIO_CONTROL_ENABLE | MDIO_CONTROL_FAULT);
+	adap_mdio->CONTROL = ((clkdiv & 0xffff) | MDIO_CONTROL_ENABLE | MDIO_CONTROL_FAULT);
 
 	if (!phy.get_link_speed(active_phy_addr))
 		return(0);
@@ -423,6 +478,7 @@ static int davinci_eth_open(struct eth_device *dev, bd_t *bis)
 
 	debug_emac("- emac_open\n");
 
+	
 	return(1);
 }
 

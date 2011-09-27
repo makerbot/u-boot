@@ -162,6 +162,11 @@ int miiphy_read (char *devname, unsigned char addr, unsigned char reg,
 	struct mii_dev *dev;
 	int found_dev = 0;
 	int read_ret = 0;
+	
+	printf("miiphy_read devname=%s, addr=%i, reg=%i\n",
+		devname,
+		addr,
+		reg);
 
 	if (!devname) {
 		printf ("NULL device name!\n");
@@ -169,9 +174,15 @@ int miiphy_read (char *devname, unsigned char addr, unsigned char reg,
 	}
 
 	list_for_each (entry, &mii_devs) {
+		printf("trying next device...");
+
 		dev = list_entry (entry, struct mii_dev, link);
 
+		printf(" found device %s\n", dev->name);
+
 		if (strcmp (devname, dev->name) == 0) {
+			printf("Found correct mii device!\n");
+
 			found_dev = 1;
 			read_ret = dev->read (devname, addr, reg, value);
 			break;
