@@ -51,7 +51,7 @@
 
 #ifdef CONFIG_CMD_NET
 
-unsigned int	emac_dbg = 1;
+unsigned int	emac_dbg = 0;
 #define debug_emac(fmt,args...)	if (emac_dbg) printf(fmt,##args)
 
 static void davinci_eth_mdio_enable(void);
@@ -64,6 +64,7 @@ static int gen_auto_negotiate(int phy_addr);
 
 void mdc_as_gpio(void)
 {
+#if 0
 	// Configure MDC pin as GPIO
 	const struct pinmux_config mdio_mdc_pins[] = {
 		{ pinmux[4], 4, 0},
@@ -71,10 +72,12 @@ void mdc_as_gpio(void)
 
 	debug_emac("- Remuxing MDIO clock to be GPIO low\n");
         davinci_configure_pin_mux(mdio_mdc_pins, ARRAY_SIZE(mdio_mdc_pins));
+#endif
 }
 
 void mdc_as_mdc(void)
 {
+#if 0
 	// Configure MDC pin as MDC
 	const struct pinmux_config mdio_mdc_pins[] = {
 		{ pinmux[4], 8, 0},
@@ -82,6 +85,7 @@ void mdc_as_mdc(void)
 
 	debug_emac("- Remuxing MDIO clock to be clock\n");
         davinci_configure_pin_mux(mdio_mdc_pins, ARRAY_SIZE(mdio_mdc_pins));
+#endif
 }
 
 
@@ -150,7 +154,9 @@ static void davinci_eth_mdio_enable(void)
 
 	clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
 
-	adap_mdio->CONTROL = (clkdiv & 0xff) |
+	clkdiv = 0x3000;
+
+	adap_mdio->CONTROL = (clkdiv & 0xffff) |
 		MDIO_CONTROL_ENABLE |
 		MDIO_CONTROL_FAULT |
 		MDIO_CONTROL_FAULT_ENABLE;
@@ -218,6 +224,8 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 
 		debug_emac("Response ok: %x\n", *data);
 
+		mdc_as_gpio();
+
 		return(1);
 	}
 
@@ -281,6 +289,8 @@ static int gen_get_link_status(int phy_addr)
 {
 	u_int16_t	tmp;
 
+	debug_emac("Get link status...");
+
 	if (davinci_eth_phy_read(phy_addr, MII_STATUS_REG, &tmp)
 							&& (tmp & 0x04)) {
 
@@ -304,7 +314,29 @@ static int gen_get_link_status(int phy_addr)
 		}
 #endif
 
+		debug_emac("Ok.\n");
+		
+
 		return(1);
+	}
+
+	debug_emac("Not ok.\n");
+
+	if (emac_dbg) {
+		davinci_eth_phy_read(phy_addr, 0, &tmp);
+		davinci_eth_phy_read(phy_addr, 1, &tmp);
+		davinci_eth_phy_read(phy_addr, 2, &tmp);
+		davinci_eth_phy_read(phy_addr, 3, &tmp);
+		davinci_eth_phy_read(phy_addr, 4, &tmp);
+		davinci_eth_phy_read(phy_addr, 5, &tmp);
+		davinci_eth_phy_read(phy_addr, 6, &tmp);
+		davinci_eth_phy_read(phy_addr, 17, &tmp);
+		davinci_eth_phy_read(phy_addr, 18, &tmp);
+		davinci_eth_phy_read(phy_addr, 26, &tmp);
+		davinci_eth_phy_read(phy_addr, 27, &tmp);
+		davinci_eth_phy_read(phy_addr, 29, &tmp);
+		davinci_eth_phy_read(phy_addr, 30, &tmp);
+		davinci_eth_phy_read(phy_addr, 31, &tmp);
 	}
 
 	return(0);

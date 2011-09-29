@@ -10,6 +10,8 @@
 #include "tftp.h"
 #include "bootp.h"
 
+#include "../include/asm-arm/arch/emac_defs.h"
+
 #if defined(CONFIG_CMD_NET)
 
 #define WELL_KNOWN_PORT	69		/* Well known TFTP port #		*/
@@ -481,10 +483,30 @@ TftpHandler (uchar * pkt, unsigned dest, unsigned src, unsigned len)
 	}
 }
 
+static volatile emac_regs       *adap_emac = (emac_regs *)EMAC_BASE_ADDR;
 
 static void
 TftpTimeout (void)
 {
+	char buffer[300];
+	dv_reg_p addr;
+	u_int32_t cnt;
+
+
+	// We timed out!!!
+	puts ("\nXXX Timeout occured, dumping EMAC stats registers:\n");
+
+        addr = &adap_emac->RXGOODFRAMES;
+        for(cnt = 0; cnt < EMAC_NUM_STATS; cnt++) {
+		sprintf(buffer,
+			"%03i: %x\n",
+			cnt+1,
+			*addr++);
+		puts(buffer);
+	}
+
+
+
 	if (++TftpTimeoutCount > TftpTimeoutCountMax) {
 		puts ("\nRetry count exceeded; starting again\n");
 #ifdef CONFIG_MCAST_TFTP
