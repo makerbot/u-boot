@@ -34,7 +34,7 @@
 /*
  * SoC Configuration
  */
-#define CONFIG_MACH_DAVINCI_MB_REV_B
+#define CONFIG_MACH_DAVINCI_MB_REV_C
 #define CONFIG_ARM926EJS		/* arm926ejs CPU core */
 #define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
@@ -51,7 +51,7 @@
 #define CONFIG_SYS_MALLOC_LEN	(0x10000 + 1*1024*1024) /* malloc() len */
 #define CONFIG_SYS_GBL_DATA_SIZE	128 /* reserved for initial data */
 #define PHYS_SDRAM_1		DAVINCI_DDR_EMIF_DATA_BASE /* DDR Start */
-#define PHYS_SDRAM_1_SIZE	(32 << 20) /* SDRAM size 32MB */
+#define PHYS_SDRAM_1_SIZE	(64 << 20) /* SDRAM size 64MB */
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1 + 0x1000000 /* memtest start addr */
 #define CONFIG_SYS_MEMTEST_END 	(PHYS_SDRAM_1 + 0x1000000 + 16*1024*1024) /* 16MB test */
 #define CONFIG_NR_DRAM_BANKS	1 /* we have 1 bank of DRAM */
@@ -195,7 +195,7 @@
 #define CONFIG_MISC_INIT_R
 #undef CONFIG_BOOTDELAY
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT	"RevB > " /* Command Prompt */
+#define CONFIG_SYS_PROMPT	"RevC > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS	16 /* max number of command args */
@@ -216,8 +216,8 @@
 #define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTARGS		"mem=32M console=ttyS2,115200n8 root=/dev/mmcblk0p1 rw rootwait ip=off"
-#define CONFIG_BOOTCOMMAND	"sf probe 0;sf read 0xc0700000 0x80000 0x220000;bootm 0xc0700000"
+#define CONFIG_BOOTARGS		"console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext2 ro rootwait mem=64M ethaddr=${ethaddr}"
+#define CONFIG_BOOTCOMMAND	"mmcinfo\; ext2load mmc 0 0xc0700000 boot\/uImage\; bootm"
 #define CONFIG_BOOTDELAY	3
 
 /*
@@ -291,10 +291,10 @@
 #define CONFIG_USB_TTY			1
 #define CONFIG_SYS_CONSOLE_IS_IN_ENV	1
 /* Change these to suit your needs */
-#define CONFIG_USBD_VENDORID		0x0451
-#define CONFIG_USBD_PRODUCTID		0x5678
+#define CONFIG_USBD_VENDORID		0x23C1
+#define CONFIG_USBD_PRODUCTID		0x1337
 #define CONFIG_USBD_MANUFACTURER	"Makerbot Industries"
-#define CONFIG_USBD_PRODUCT_NAME	"Rev B"
+#define CONFIG_USBD_PRODUCT_NAME	"Rev C"
 #endif /* CONFIG_MUSB_UDC */
 
 #endif /* CONFIG_USB_DA8XX */

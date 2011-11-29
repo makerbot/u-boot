@@ -2577,6 +2577,7 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_DAVINCI_MB_PROTO     3101
 #define MACH_TYPE_DAVINCI_MB_REV_A     3102
 #define MACH_TYPE_DAVINCI_MB_REV_B     3103
+#define MACH_TYPE_DAVINCI_MB_REV_C     3103
 
 #ifdef CONFIG_ARCH_EBSA110
 # ifdef machine_arch_type
