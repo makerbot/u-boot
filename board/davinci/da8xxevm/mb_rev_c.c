@@ -211,7 +211,7 @@ int board_init(void)
 #endif
 
 	/* arch number of the board */
-	gd->bd->bi_arch_number = MACH_TYPE_DAVINCI_MB_REV_B;
+	gd->bd->bi_arch_number = MACH_TYPE_DAVINCI_MB_REV_C;
 
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = LINUX_BOOT_PARAM_ADDR;
