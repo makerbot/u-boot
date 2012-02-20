@@ -4,6 +4,7 @@ Instructions for using U-Boot with Gen5 hardware. Taken from the ops wiki.
 These are based on TI's instructions for building u-boot. Make sure that the Angstrom toolchain is installed and set up in your environment before continuing.
 
 Before you can follow these instructions, you should:
+
 * [Set up a development environment](http://ops.makerbot.com/research:gen-5-development-environment)
 * [Get a copy of the bootloader utility](http://gondor.makerbot.com/software/), or [build one yourself](http://ops.makerbot.com/research:gen-5-development-environment)
 
