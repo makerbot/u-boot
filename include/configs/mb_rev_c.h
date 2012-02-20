@@ -216,8 +216,8 @@
 #define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTARGS		"console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext2 ro rootwait mem=64M ethaddr=${ethaddr}"
-#define CONFIG_BOOTCOMMAND	"mmcinfo\; ext2load mmc 0 0xc0700000 boot\/uImage\; bootm"
+#define CONFIG_BOOTARGS		"console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext3 rw rootwait mem=64M ethaddr=${ethaddr}"
+#define CONFIG_BOOTCOMMAND	"mmcinfo\; ext2load mmc 0 0xc0700000 \/boot\/uImage\; bootm"
 #define CONFIG_BOOTDELAY	3
 
 /*
