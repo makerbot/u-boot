@@ -51,7 +51,7 @@
 
 #ifdef CONFIG_CMD_NET
 
-unsigned int	emac_dbg = 0;
+unsigned int	emac_dbg = 1;
 #define debug_emac(fmt,args...)	if (emac_dbg) printf(fmt,##args)
 
 static void davinci_eth_mdio_enable(void);
@@ -62,6 +62,27 @@ static int gen_get_link_status(int phy_addr);
 static int gen_auto_negotiate(int phy_addr);
 
 
+void mdc_as_gpio(void)
+{
+	// Configure MDC pin as GPIO
+	const struct pinmux_config mdio_mdc_pins[] = {
+		{ pinmux[4], 4, 0},
+	};
+
+	debug_emac("- Remuxing MDIO clock to be GPIO low\n");
+        davinci_configure_pin_mux(mdio_mdc_pins, ARRAY_SIZE(mdio_mdc_pins));
+}
+
+void mdc_as_mdc(void)
+{
+	// Configure MDC pin as MDC
+	const struct pinmux_config mdio_mdc_pins[] = {
+		{ pinmux[4], 8, 0},
+	};
+
+	debug_emac("- Remuxing MDIO clock to be clock\n");
+        davinci_configure_pin_mux(mdio_mdc_pins, ARRAY_SIZE(mdio_mdc_pins));
+}
 
 
 void eth_mdio_enable(void)
@@ -129,9 +150,7 @@ static void davinci_eth_mdio_enable(void)
 
 	clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
 
-	clkdiv = 0x3000;
-
-	adap_mdio->CONTROL = (clkdiv & 0xffff) |
+	adap_mdio->CONTROL = (clkdiv & 0xff) |
 		MDIO_CONTROL_ENABLE |
 		MDIO_CONTROL_FAULT |
 		MDIO_CONTROL_FAULT_ENABLE;
@@ -177,6 +196,8 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 {
 	int	tmp;
 
+	mdc_as_mdc();
+
 	debug_emac("davinci_eth_phy_read phy_addr:%i reg_num:%i\n",
 		phy_addr, reg_num);
 
@@ -202,6 +223,8 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 
 	debug_emac("Response bad!\n");
 
+	mdc_as_gpio();
+
 	*data = -1;
 	return(0);
 }
@@ -209,6 +232,8 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 /* Write to a PHY register via MDIO inteface. Blocks until operation is complete. */
 int davinci_eth_phy_write(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t data)
 {
+	mdc_as_mdc();
+
 	debug_emac("davinci_eth_phy_write phy_addr:%i reg_num:%i data:%x\n",
 		phy_addr, reg_num, data);
 
@@ -227,13 +252,15 @@ int davinci_eth_phy_write(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t data)
 
 	debug_emac("Complete!\n");
 
+	mdc_as_gpio();
+
 	return(1);
 }
 
 /* PHY functions for a generic PHY */
 static int gen_init_phy(int phy_addr)
 {
-	int		ret = 1;
+	int	ret = 1;
 
 	if (gen_get_link_status(phy_addr)) {
 		/* Try another time */
@@ -288,26 +315,6 @@ static int gen_auto_negotiate(int phy_addr)
 	u_int16_t	tmp, val;
 	unsigned long cntr = 0;
 
-#if 0	
-	debug_emac("Disabling autodetect and forcing speed to 10MB/half duplex\n");
-
-	// Per the LAN8710a datasheet, section 3.2.3:
-        davinci_eth_phy_read(phy_addr, PHY_BMCR, &tmp);
-
-	// Set auto-negotiation enable bit in basic control register to 0
-	tmp &= ~PHY_BMCR_AUTON;
-
-	// Set speed select and duplex mode in basic control register
-	tmp |= PHY_BMCR_100MB;
-	tmp |= PHY_BMCR_DPLX;
-
-        davinci_eth_phy_write(phy_addr, PHY_BMCR, tmp);
-
-	// Also, turn off auto MDIX (crossover detection)
-	davinci_eth_phy_write(phy_addr, 27, 0x8000);
-	
-	udelay(40000);
-#endif
 	debug_emac("Auto-negotiating link...\n");	
 
 	if (!davinci_eth_phy_read(phy_addr, PHY_BMCR, &tmp))
@@ -462,9 +469,6 @@ static int davinci_eth_open(struct eth_device *dev, bd_t *bis)
 	/* Init MDIO & get link state */
 	clkdiv = (EMAC_MDIO_BUS_FREQ / EMAC_MDIO_CLOCK_FREQ) - 1;
 	adap_mdio->CONTROL = ((clkdiv & 0xffff) | MDIO_CONTROL_ENABLE | MDIO_CONTROL_FAULT);
-
-	/* Tell the PHY to use a fixed link state */
-	gen_auto_negotiate(active_phy_addr);
 
 	if (!phy.get_link_speed(active_phy_addr))
 		return(0);
@@ -730,7 +734,7 @@ int davinci_emac_initialize(void)
 			phy.auto_negotiate = gen_auto_negotiate;
 	}
 
-	printf("An Ethernet PHY: %s\n", phy.name);
+	printf("Ethernet PHY: %s\n", phy.name);
 
 	miiphy_register(phy.name, davinci_mii_phy_read, davinci_mii_phy_write);
 

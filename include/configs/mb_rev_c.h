@@ -194,8 +194,7 @@
 #undef CONFIG_USE_IRQ			/* No IRQ/FIQ in U-Boot */
 #define CONFIG_MISC_INIT_R
 #undef CONFIG_BOOTDELAY
-#define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_PROMPT	"RevC > " /* Command Prompt */
+#define CONFIG_SYS_PROMPT	"EP2 RevC/D> " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
 #define CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)
 #define CONFIG_SYS_MAXARGS	16 /* max number of command args */
@@ -217,9 +216,9 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS		"console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext3 rw rootwait mem=64M ethaddr=${ethaddr}"
-#define CONFIG_BOOTCOMMAND	"mmcinfo\; ext2load mmc 0 0xc0700000 \/boot\/uImage\; bootm"
+#define CONFIG_BOOTCOMMAND	"mmcinfo\; ext2load mmc 0 0xc0700000 ${bootfile}\; setenv bootargs console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext3 rw rootwait mem=64M ethaddr=${ethaddr}\; bootm"
+#define CONFIG_BOOTFILE         "/boot/uImage"
 #define CONFIG_BOOTDELAY	3
-
 /*
  * U-Boot commands
  */
