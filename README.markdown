@@ -10,15 +10,15 @@ Before you can follow these instructions, you should:
 
 
 ## Building
-Check out the u-boot git repository:
-
-    git clone git@github.com:makerbot/u-boot.git
+Use the [gen5-setup script](https://github.com/makerbot/gen5-setup-scripts) to set up your development environment; this will automatically clone the u-boot repository to the u-boot folder.
 
 Build:
-
+    cd u-boot
     make distclean CROSS_COMPILE=arm-angstrom-linux-gnueabi-
     make mb_rev_c_config CROSS_COMPILE=arm-angstrom-linux-gnueabi-
     make all CROSS_COMPILE=arm-angstrom-linux-gnueabi- -j8
+
+The end result will be a file called u-boot.bin.
 
 ## Installation
 Turn off the target board. Ensure that you have hooked up the serial cable to the board.
@@ -54,6 +54,10 @@ To get to the U-Boot configuration prompt:
 2. Run a console program (we recommend screen on Linux and OS/X, and putty on Windows), and connect to the FTDI serial port at 115200/n/1
 3. Reset the board.
 4. Press any key within 3 seconds, to interrupt the boot sequence.
+
+U-boot is suprisingly flexible. Type in 'help' to see a list of possible commands.
+
+_Note: We've automated U-Boot configuration on the production line, using a [python script](https://github.com/makerbot/pyReplicator/blob/master/UBootProgrammer.py)_
 
 Here are some sample environment configurations:
 
