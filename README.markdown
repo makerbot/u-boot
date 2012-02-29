@@ -60,8 +60,8 @@ Here are some sample environment configurations:
 ### Boot from an SD card
 By default, U-Boot should be configured to boot from an SD card. This is how to set the configuration:
 
-    setenv bootfile "boot/uImage"
-    setenv bootcmd "mmcinfo\; ext2load mmc 0 0xc0700000 ${bootfile}\; setenv bootargs console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext2 rw rootwait mem=64M ethaddr=${ethaddr}\; bootm"
+    setenv bootfile 'boot/uImage'
+    setenv bootcmd 'mmcinfo\; ext2load mmc 0 0xc0700000 ${bootfile}\; setenv bootargs console=ttyS1,115200n8 noinitrd root=/dev/mmcblk0p1 rootfstype=ext3 rw rootwait mem=64M ethaddr=${ethaddr}\; bootm'
     saveenv
     reset
 
@@ -103,5 +103,5 @@ Here is a command sequence, that was used to boot from 10.0.0.11 on a Rev A boar
     setenv tftpblocksize 1400
     boot
 
-The "tftpblocksize" parameter reduces the size of the TFTP packets; the default may sometimes be larger than the MTU your network can handle. We've set it to a more conservative value above.
+The 'tftpblocksize' parameter reduces the size of the TFTP packets; the default may sometimes be larger than the MTU your network can handle. We've set it to a more conservative value above.
 
