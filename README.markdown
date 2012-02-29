@@ -1,5 +1,4 @@
 # U-Boot
-Instructions for using U-Boot with Gen5 hardware. Taken from the ops wiki.
 
 These are based on TI's instructions for building u-boot. Make sure that the Angstrom toolchain is installed and set up in your environment before continuing.
 
@@ -38,6 +37,8 @@ For OS/X, you need to get the mono framework (http://www.go-mono.com/mono-downlo
 
 Turn on the power for the target board, or hit the reset button if it's powered on.
 Wait for the uploader to complete.
+
+_Note: We've automated the bootloader on the production line, using a [python script](https://github.com/makerbot/pyReplicator/blob/master/burn_bootloader.py)_
 
 ## Erasing the flash chip
 Erasing the flash chip will ensure that the u-boot environment is reset. This is required to reset the MAC Address.
