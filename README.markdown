@@ -1,5 +1,7 @@
 # U-Boot
 
+NB: You should not even need to come into this directory.  Instead, use the gen5-tools.py script to build these files.  See the section entitld 'Building' for more information
+
 These are based on TI's instructions for building u-boot. Make sure that the Angstrom toolchain is installed and set up in your environment before continuing.
 
 Before you can follow these instructions, you should:
@@ -9,7 +11,8 @@ Before you can follow these instructions, you should:
 
 
 ## Building
-Use the [gen5-setup script](https://github.com/makerbot/gen5-setup-scripts) to set up your development environment; this will automatically clone the u-boot repository to the u-boot folder.
+Use the [gen5-setup script](https://github.com/makerbot/gen5-setup-scripts) to set up your development environment; this will automatically clone the u-boot repository to the u-boot folder.  Once you have clond the gen5-setup-scripts repository, in a terminal window type:
+	python gen5-tools.py -c build -t uboot
 
 Build:
     cd u-boot
