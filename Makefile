@@ -2949,6 +2949,9 @@ mb_rev_b_config:	unconfig
 mb_rev_c_config:	unconfig
 	@$(MKCONFIG) -a mb_rev_c arm arm926ejs da8xxevm davinci davinci
 
+mb_manhattan_a07_config:    unconfig
+	@$(MKCONFIG) -a mb_manhattan_a07 arm arm926ejs da8xxevm davinci davinci
+
 da830_omapl137_evm_config	\
 da830evm_config:	unconfig
 	@$(MKCONFIG) -a da830evm arm arm926ejs da8xxevm davinci davinci
