@@ -54,6 +54,7 @@
 #define RSK7203_FLASH_BASE_1	0x20000000	/* Non cache */
 #define RSK7203_FLASH_BANK_SIZE	(4 * 1024 * 1024)
 
+#define CONFIG_SYS_TEXT_BASE	0x0C7C0000
 #define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 #define CONFIG_SYS_PROMPT	"=> "	/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	256	/* Buffer size for input from the Console */
@@ -104,7 +105,6 @@
 #define CONFIG_SYS_HZ			(CONFIG_SYS_CLK_FREQ / CMT_CLK_DIVIDER)
 
 /* Network interface */
-#define CONFIG_NET_MULTI
 #define CONFIG_SMC911X
 #define CONFIG_SMC911X_16_BIT
 #define CONFIG_SMC911X_BASE (0x24000000)

@@ -24,7 +24,7 @@
 #ifndef	_IDE_H
 #define _IDE_H
 
-#define	IDE_BUS(dev)	(dev >> 1)
+#define IDE_BUS(dev)	(dev / (CONFIG_SYS_IDE_MAXDEVICE / CONFIG_SYS_IDE_MAXBUS))
 
 #define	ATA_CURR_BASE(dev)	(CONFIG_SYS_ATA_BASE_ADDR+ide_bus_offset[IDE_BUS(dev)])
 
@@ -52,9 +52,16 @@ typedef ulong lbaint_t;
 
 void ide_init(void);
 ulong ide_read(int device, lbaint_t blknr, ulong blkcnt, void *buffer);
-ulong ide_write(int device, lbaint_t blknr, ulong blkcnt, void *buffer);
+ulong ide_write(int device, lbaint_t blknr, ulong blkcnt, const void *buffer);
 
 #if defined(CONFIG_OF_IDE_FIXUP)
 int ide_device_present(int dev);
+#endif
+
+#if defined(CONFIG_IDE_AHB)
+unsigned char ide_read_register(int dev, unsigned int port);
+void ide_write_register(int dev, unsigned int port, unsigned char val);
+void ide_read_data(int dev, ulong *sect_buf, int words);
+void ide_write_data(int dev, ulong *sect_buf, int words);
 #endif
 #endif /* _IDE_H */

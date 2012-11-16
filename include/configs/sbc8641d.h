@@ -57,6 +57,9 @@
  */
 #define CONFIG_SYS_SCRATCH_VA	0xe8000000
 
+#define CONFIG_SYS_SRIO
+#define CONFIG_SRIO1			/* SRIO port 1 */
+
 #define CONFIG_PCI		1	/* Enable PCIE */
 #define CONFIG_PCIE1		1	/* PCIE controler 1 (slot 1) */
 #define CONFIG_PCIE2		1	/* PCIE controler 2 (slot 2) */
@@ -273,7 +276,6 @@
 /* Use the HUSH parser */
 #define CONFIG_SYS_HUSH_PARSER
 #ifdef  CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2 "> "
 #endif
 
 /*
@@ -297,9 +299,9 @@
 /*
  * RapidIO MMU
  */
-#define CONFIG_SYS_RIO_MEM_BASE	0xc0000000	/* base address */
-#define CONFIG_SYS_RIO_MEM_PHYS	CONFIG_SYS_RIO_MEM_BASE
-#define CONFIG_SYS_RIO_MEM_SIZE	0x20000000	/* 128M */
+#define CONFIG_SYS_SRIO1_MEM_BASE	0xc0000000	/* base address */
+#define CONFIG_SYS_SRIO1_MEM_PHYS	CONFIG_SYS_SRIO1_MEM_BASE
+#define CONFIG_SYS_SRIO1_MEM_SIZE	0x20000000	/* 128M */
 
 /*
  * General PCI
@@ -329,7 +331,6 @@
 
 #undef CONFIG_SYS_SCSI_SCAN_BUS_REVERSE
 
-#define CONFIG_NET_MULTI
 #define CONFIG_PCI_PNP			/* do pci plug-and-play */
 
 #undef CONFIG_EEPRO100
@@ -357,10 +358,6 @@
 #endif	/* CONFIG_PCI */
 
 #if defined(CONFIG_TSEC_ENET)
-
-#ifndef CONFIG_NET_MULTI
-#define CONFIG_NET_MULTI	1
-#endif
 
 /* #define CONFIG_MII		1 */	/* MII PHY management */
 
@@ -417,10 +414,10 @@
  * BAT2         512M   Cache-inhibited, guarded
  * 0xc000_0000  512M   RapidIO Memory
  */
-#define CONFIG_SYS_DBAT2L	(CONFIG_SYS_RIO_MEM_BASE | BATL_PP_RW \
+#define CONFIG_SYS_DBAT2L	(CONFIG_SYS_SRIO1_MEM_BASE | BATL_PP_RW \
 			| BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_DBAT2U	(CONFIG_SYS_RIO_MEM_BASE | BATU_BL_512M | BATU_VS | BATU_VP)
-#define CONFIG_SYS_IBAT2L	(CONFIG_SYS_RIO_MEM_BASE | BATL_PP_RW | BATL_CACHEINHIBIT)
+#define CONFIG_SYS_DBAT2U	(CONFIG_SYS_SRIO1_MEM_BASE | BATU_BL_512M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT2L	(CONFIG_SYS_SRIO1_MEM_BASE | BATL_PP_RW | BATL_CACHEINHIBIT)
 #define CONFIG_SYS_IBAT2U	CONFIG_SYS_DBAT2U
 
 /*
@@ -567,8 +564,8 @@
 #define CONFIG_IPADDR		192.168.0.50
 
 #define CONFIG_HOSTNAME		sbc8641d
-#define CONFIG_ROOTPATH		/opt/eldk/ppc_74xx
-#define CONFIG_BOOTFILE		uImage
+#define CONFIG_ROOTPATH		"/opt/eldk/ppc_74xx"
+#define CONFIG_BOOTFILE		"uImage"
 
 #define CONFIG_SERVERIP		192.168.0.2
 #define CONFIG_GATEWAYIP	192.168.0.1

@@ -28,7 +28,6 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc8220.h>
-#include <timestamp.h>
 #include <version.h>
 
 #define _LINUX_CONFIG_H 1   /* avoid reading Linux autoconf.h file  */
@@ -39,10 +38,6 @@
 #include <asm/cache.h>
 #include <asm/mmu.h>
 #include <asm/u-boot.h>
-
-#ifndef	 CONFIG_IDENT_STRING
-#define	 CONFIG_IDENT_STRING ""
-#endif
 
 /* We don't want the  MMU yet.
 */
@@ -69,7 +64,7 @@
 	GOT_ENTRY(transfer_to_handler)
 
 	GOT_ENTRY(__init_end)
-	GOT_ENTRY(_end)
+	GOT_ENTRY(__bss_end__)
 	GOT_ENTRY(__bss_start)
 	END_GOT
 
@@ -79,9 +74,7 @@
 	.data
 	.globl	version_string
 version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
-	.ascii CONFIG_IDENT_STRING, "\0"
+	.ascii U_BOOT_VERSION_STRING, "\0"
 
 /*
  * Exception vectors
@@ -654,7 +647,7 @@ clear_bss:
 	 * Now clear BSS segment
 	 */
 	lwz	r3,GOT(__bss_start)
-	lwz	r4,GOT(_end)
+	lwz	r4,GOT(__bss_end__)
 
 	cmplw	0, r3, r4
 	beq	6f

@@ -37,6 +37,7 @@
 #define CONFIG_DASA_SIM		1	/* ...on a DASA_SIM board	*/
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFFC0000
+#define CONFIG_SYS_LDSCRIPT	"board/esd/dasa_sim/u-boot.lds"
 
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* call board_early_init_f()	*/
 
@@ -174,7 +175,6 @@
 #define CONFIG_PCI			/* include pci support			*/
 #undef CONFIG_PCI_PNP
 
-#define CONFIG_NET_MULTI		/* Multi ethernet cards support		*/
 
 #define CONFIG_TULIP
 

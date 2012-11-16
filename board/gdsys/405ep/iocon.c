@@ -27,14 +27,14 @@
 #include <asm/io.h>
 #include <asm/ppc4xx-gpio.h>
 
-#include "../common/fpga.h"
+#include "405ep.h"
+#include <gdsys_fpga.h>
+
 #include "../common/osd.h"
 
-enum {
-	REG_VERSIONS = 0x0002,
-	REG_FPGA_VERSION = 0x0004,
-	REG_FPGA_FEATURES = 0x0006,
-};
+#define LATCH0_BASE (CONFIG_SYS_LATCH_BASE)
+#define LATCH1_BASE (CONFIG_SYS_LATCH_BASE + 0x100)
+#define LATCH2_BASE (CONFIG_SYS_LATCH_BASE + 0x200)
 
 enum {
 	UNITTYPE_MAIN_SERVER = 0,
@@ -75,9 +75,27 @@ enum {
 int checkboard(void)
 {
 	char *s = getenv("serial#");
-	u16 versions = fpga_get_reg(REG_VERSIONS);
-	u16 fpga_version = fpga_get_reg(REG_FPGA_VERSION);
-	u16 fpga_features = fpga_get_reg(REG_FPGA_FEATURES);
+
+	puts("Board: ");
+
+	puts("IoCon");
+
+	if (s != NULL) {
+		puts(", serial# ");
+		puts(s);
+	}
+
+	puts("\n");
+
+	return 0;
+}
+
+static void print_fpga_info(void)
+{
+	struct ihs_fpga *fpga = (struct ihs_fpga *) CONFIG_SYS_FPGA_BASE(0);
+	u16 versions = in_le16(&fpga->versions);
+	u16 fpga_version = in_le16(&fpga->fpga_version);
+	u16 fpga_features = in_le16(&fpga->fpga_features);
 	unsigned unit_type;
 	unsigned hardware_version;
 	unsigned feature_compression;
@@ -97,16 +115,6 @@ int checkboard(void)
 	feature_ramconfig = (fpga_features & 0x0060) >> 5;
 	feature_carriers = (fpga_features & 0x000c) >> 2;
 	feature_video_channels = fpga_features & 0x0003;
-
-	printf("Board: ");
-
-	printf("IoCon");
-
-	if (s != NULL) {
-		puts(", serial# ");
-		puts(s);
-	}
-	puts("\n       ");
 
 	switch (unit_type) {
 	case UNITTYPE_MAIN_USER:
@@ -208,13 +216,13 @@ int checkboard(void)
 	printf(", %d carrier(s)", feature_carriers);
 
 	printf(", %d video channel(s)\n", feature_video_channels);
-
-	return 0;
 }
 
 int last_stage_init(void)
 {
-	return osd_probe();
+	print_fpga_info();
+
+	return osd_probe(0);
 }
 
 /*
@@ -222,15 +230,44 @@ int last_stage_init(void)
  */
 void fpga_gpio_set(int pin)
 {
-	out_le16((void *)(CONFIG_SYS_FPGA_BASE + 0x18), pin);
+	out_le16((void *)(CONFIG_SYS_FPGA0_BASE + 0x18), pin);
 }
 
 void fpga_gpio_clear(int pin)
 {
-	out_le16((void *)(CONFIG_SYS_FPGA_BASE + 0x16), pin);
+	out_le16((void *)(CONFIG_SYS_FPGA0_BASE + 0x16), pin);
 }
 
 int fpga_gpio_get(int pin)
 {
-	return in_le16((void *)(CONFIG_SYS_FPGA_BASE + 0x14)) & pin;
+	return in_le16((void *)(CONFIG_SYS_FPGA0_BASE + 0x14)) & pin;
+}
+
+void gd405ep_init(void)
+{
+}
+
+void gd405ep_set_fpga_reset(unsigned state)
+{
+	if (state) {
+		out_le16((void *)LATCH0_BASE, CONFIG_SYS_LATCH0_RESET);
+		out_le16((void *)LATCH1_BASE, CONFIG_SYS_LATCH1_RESET);
+	} else {
+		out_le16((void *)LATCH0_BASE, CONFIG_SYS_LATCH0_BOOT);
+		out_le16((void *)LATCH1_BASE, CONFIG_SYS_LATCH1_BOOT);
+	}
+}
+
+void gd405ep_setup_hw(void)
+{
+	/*
+	 * set "startup-finished"-gpios
+	 */
+	gpio_write_bit(21, 0);
+	gpio_write_bit(22, 1);
+}
+
+int gd405ep_get_fpga_done(unsigned fpga)
+{
+	return in_le16((void *)LATCH2_BASE) & CONFIG_SYS_FPGA_DONE(fpga);
 }

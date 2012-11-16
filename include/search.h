@@ -32,15 +32,6 @@
 
 #define __set_errno(val) do { errno = val; } while (0)
 
-/*
- * Prototype structure for a linked-list data structure.
- * This is the type used by the `insque' and `remque' functions.
- */
-
-/* For use with hsearch(3).  */
-typedef int (*__compar_fn_t) (__const void *, __const void *);
-typedef __compar_fn_t comparison_fn_t;
-
 /* Action which shall be performed in the call the hsearch.  */
 typedef enum {
 	FIND,
@@ -48,7 +39,7 @@ typedef enum {
 } ACTION;
 
 typedef struct entry {
-	char *key;
+	const char *key;
 	char *data;
 } ENTRY;
 
@@ -66,15 +57,23 @@ struct hsearch_data {
 	struct _ENTRY *table;
 	unsigned int size;
 	unsigned int filled;
+/*
+ * Callback function which will check whether the given change for variable
+ * "name" from "oldval" to "newval" may be applied or not, and possibly apply
+ * such change.
+ * When (flag & H_FORCE) is set, it shall not print out any error message and
+ * shall force overwriting of write-once variables.
+.* Must return 0 for approval, 1 for denial.
+ */
+	int (*apply)(const char *name, const char *oldval,
+			const char *newval, int flag);
 };
 
 /* Create a new hashing table which will at most contain NEL elements.  */
-extern int hcreate(size_t __nel);
 extern int hcreate_r(size_t __nel, struct hsearch_data *__htab);
 
 /* Destroy current internal hashing table.  */
-extern void hdestroy(void);
-extern void hdestroy_r(struct hsearch_data *__htab);
+extern void hdestroy_r(struct hsearch_data *__htab, int do_apply);
 
 /*
  * Search for entry matching ITEM.key in internal hash table.  If
@@ -82,25 +81,42 @@ extern void hdestroy_r(struct hsearch_data *__htab);
  * NULL.  If ACTION is `ENTER' replace existing data (if any) with
  * ITEM.data.
  * */
-extern ENTRY *hsearch(ENTRY __item, ACTION __action);
 extern int hsearch_r(ENTRY __item, ACTION __action, ENTRY ** __retval,
 		     struct hsearch_data *__htab);
 
+/*
+ * Search for an entry matching `MATCH'.  Otherwise, Same semantics
+ * as hsearch_r().
+ */
+extern int hmatch_r(const char *__match, int __last_idx, ENTRY ** __retval,
+		    struct hsearch_data *__htab);
+/*
+ * Search for an entry whose key or data contains `MATCH'.  Otherwise,
+ * Same semantics as hsearch_r().
+ */
+extern int hstrstr_r(const char *__match, int __last_idx, ENTRY ** __retval,
+		    struct hsearch_data *__htab);
+
 /* Search and delete entry matching ITEM.key in internal hash table. */
-extern int hdelete(const char *__key);
-extern int hdelete_r(const char *__key, struct hsearch_data *__htab);
+extern int hdelete_r(const char *__key, struct hsearch_data *__htab,
+			int do_apply);
 
-extern ssize_t hexport(const char __sep, char **__resp, size_t __size);
 extern ssize_t hexport_r(struct hsearch_data *__htab,
-		     const char __sep, char **__resp, size_t __size);
+		     const char __sep, char **__resp, size_t __size,
+		     int argc, char * const argv[]);
 
-extern int himport(const char *__env, size_t __size, const char __sep,
-		   int __flag);
+/*
+ * nvars: length of vars array
+ * vars: array of strings (variable names) to import (nvars == 0 means all)
+ * do_apply: whether to call callback function to check the new argument,
+ * and possibly apply changes (false means accept everything)
+ */
 extern int himport_r(struct hsearch_data *__htab,
 		     const char *__env, size_t __size, const char __sep,
-		     int __flag);
+		     int __flag, int nvars, char * const vars[], int do_apply);
 
-/* Flags for himport() / himport_r() */
-#define	H_NOCLEAR	1	/* do not clear hash table before importing */
+/* Flags for himport_r() */
+#define	H_NOCLEAR	(1 << 0) /* do not clear hash table before importing */
+#define	H_FORCE		(1 << 1) /* overwrite read-only/write-once variables */
 
 #endif /* search.h */

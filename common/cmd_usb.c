@@ -28,11 +28,15 @@
 #include <common.h>
 #include <command.h>
 #include <asm/byteorder.h>
+#include <asm/unaligned.h>
 #include <part.h>
 #include <usb.h>
 
 #ifdef CONFIG_USB_STORAGE
 static int usb_stor_curr_dev = -1; /* current device */
+#endif
+#ifdef CONFIG_USB_HOST_ETHER
+static int usb_ether_curr_dev = -1; /* current ethernet device */
 #endif
 
 /* some display routines (info command) */
@@ -146,7 +150,8 @@ void usb_display_class_sub(unsigned char dclass, unsigned char subclass,
 
 void usb_display_string(struct usb_device *dev, int index)
 {
-	char buffer[256];
+	ALLOC_CACHE_ALIGN_BUFFER(char, buffer, 256);
+
 	if (index != 0) {
 		if (usb_string(dev, index, &buffer[0], 256) > 0)
 			printf("String: \"%s\"", buffer);
@@ -237,7 +242,7 @@ void usb_display_ep_desc(struct usb_endpoint_descriptor *epdesc)
 		printf("Interrupt");
 		break;
 	}
-	printf(" MaxPacket %d", epdesc->wMaxPacketSize);
+	printf(" MaxPacket %d", get_unaligned(&epdesc->wMaxPacketSize));
 	if ((epdesc->bmAttributes & 0x03) == 0x3)
 		printf(" Interval %dms", epdesc->bInterval);
 	printf("\n");
@@ -278,7 +283,7 @@ static inline char *portspeed(int speed)
 void usb_show_tree_graph(struct usb_device *dev, char *pre)
 {
 	int i, index;
-	int has_child, last_child, port;
+	int has_child, last_child;
 
 	index = strlen(pre);
 	printf(" %s", pre);
@@ -297,7 +302,6 @@ void usb_show_tree_graph(struct usb_device *dev, char *pre)
 				/* found our pointer, see if we have a
 				 * little sister
 				 */
-				port = i;
 				while (i++ < dev->parent->maxchild) {
 					if (dev->parent->children[i] != NULL) {
 						/* found a sister */
@@ -351,153 +355,7 @@ void usb_show_tree(struct usb_device *dev)
 #ifdef CONFIG_USB_STORAGE
 int do_usbboot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	char *boot_device = NULL;
-	char *ep;
-	int dev, part = 1, rcode;
-	ulong addr, cnt;
-	disk_partition_t info;
-	image_header_t *hdr;
-	block_dev_desc_t *stor_dev;
-#if defined(CONFIG_FIT)
-	const void *fit_hdr = NULL;
-#endif
-
-	switch (argc) {
-	case 1:
-		addr = CONFIG_SYS_LOAD_ADDR;
-		boot_device = getenv("bootdevice");
-		break;
-	case 2:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = getenv("bootdevice");
-		break;
-	case 3:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = argv[2];
-		break;
-	default:
-		return cmd_usage(cmdtp);
-	}
-
-	if (!boot_device) {
-		puts("\n** No boot device **\n");
-		return 1;
-	}
-
-	dev = simple_strtoul(boot_device, &ep, 16);
-	stor_dev = usb_stor_get_dev(dev);
-	if (stor_dev == NULL || stor_dev->type == DEV_TYPE_UNKNOWN) {
-		printf("\n** Device %d not available\n", dev);
-		return 1;
-	}
-	if (stor_dev->block_read == NULL) {
-		printf("storage device not initialized. Use usb scan\n");
-		return 1;
-	}
-	if (*ep) {
-		if (*ep != ':') {
-			puts("\n** Invalid boot device, use `dev[:part]' **\n");
-			return 1;
-		}
-		part = simple_strtoul(++ep, NULL, 16);
-	}
-
-	if (get_partition_info(stor_dev, part, &info)) {
-		/* try to boot raw .... */
-		strncpy((char *)&info.type[0], BOOT_PART_TYPE,
-			sizeof(BOOT_PART_TYPE));
-		strncpy((char *)&info.name[0], "Raw", 4);
-		info.start = 0;
-		info.blksz = 0x200;
-		info.size = 2880;
-		printf("error reading partinfo...try to boot raw\n");
-	}
-	if ((strncmp((char *)info.type, BOOT_PART_TYPE,
-	    sizeof(info.type)) != 0) &&
-	    (strncmp((char *)info.type, BOOT_PART_COMP,
-	    sizeof(info.type)) != 0)) {
-		printf("\n** Invalid partition type \"%.32s\""
-			" (expect \"" BOOT_PART_TYPE "\")\n",
-			info.type);
-		return 1;
-	}
-	printf("\nLoading from USB device %d, partition %d: "
-		"Name: %.32s  Type: %.32s\n",
-		dev, part, info.name, info.type);
-
-	debug("First Block: %ld,  # of blocks: %ld, Block Size: %ld\n",
-		info.start, info.size, info.blksz);
-
-	if (stor_dev->block_read(dev, info.start, 1, (ulong *)addr) != 1) {
-		printf("** Read error on %d:%d\n", dev, part);
-		return 1;
-	}
-
-	switch (genimg_get_format((void *)addr)) {
-	case IMAGE_FORMAT_LEGACY:
-		hdr = (image_header_t *)addr;
-
-		if (!image_check_hcrc(hdr)) {
-			puts("\n** Bad Header Checksum **\n");
-			return 1;
-		}
-
-		image_print_contents(hdr);
-
-		cnt = image_get_image_size(hdr);
-		break;
-#if defined(CONFIG_FIT)
-	case IMAGE_FORMAT_FIT:
-		fit_hdr = (const void *)addr;
-		puts("Fit image detected...\n");
-
-		cnt = fit_get_size(fit_hdr);
-		break;
-#endif
-	default:
-		puts("** Unknown image type\n");
-		return 1;
-	}
-
-	cnt += info.blksz - 1;
-	cnt /= info.blksz;
-	cnt -= 1;
-
-	if (stor_dev->block_read(dev, info.start+1, cnt,
-		      (ulong *)(addr+info.blksz)) != cnt) {
-		printf("\n** Read error on %d:%d\n", dev, part);
-		return 1;
-	}
-
-#if defined(CONFIG_FIT)
-	/* This cannot be done earlier, we need complete FIT image in RAM
-	 * first
-	 */
-	if (genimg_get_format((void *)addr) == IMAGE_FORMAT_FIT) {
-		if (!fit_check_format(fit_hdr)) {
-			puts("** Bad FIT image format\n");
-			return 1;
-		}
-		fit_print_contents(fit_hdr);
-	}
-#endif
-
-	/* Loading ok, update default load address */
-	load_addr = addr;
-
-	flush_cache(addr, (cnt+1)*info.blksz);
-
-	/* Check if we should attempt an auto-start */
-	if (((ep = getenv("autostart")) != NULL) && (strcmp(ep, "yes") == 0)) {
-		char *local_args[2];
-		extern int do_bootm(cmd_tbl_t *, int, int, char *[]);
-		local_args[0] = argv[0];
-		local_args[1] = NULL;
-		printf("Automatic boot of image at addr 0x%08lX ...\n", addr);
-		rcode = do_bootm(cmdtp, 0, 1, local_args);
-		return rcode;
-	}
-	return 0;
+	return common_diskboot(cmdtp, "usb", argc, argv);
 }
 #endif /* CONFIG_USB_STORAGE */
 
@@ -516,18 +374,24 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 #endif
 
 	if (argc < 2)
-		return cmd_usage(cmdtp);
+		return CMD_RET_USAGE;
 
 	if ((strncmp(argv[1], "reset", 5) == 0) ||
 		 (strncmp(argv[1], "start", 5) == 0)) {
+		bootstage_mark_name(BOOTSTAGE_ID_USB_START, "usb_start");
 		usb_stop();
 		printf("(Re)start USB...\n");
 		i = usb_init();
+		if (i >= 0) {
 #ifdef CONFIG_USB_STORAGE
-		/* try to recognize storage devices immediately */
-		if (i >= 0)
+			/* try to recognize storage devices immediately */
 			usb_stor_curr_dev = usb_stor_scan(1);
 #endif
+#ifdef CONFIG_USB_HOST_ETHER
+			/* try to recognize ethernet devices immediately */
+			usb_ether_curr_dev = usb_host_eth_scan(1);
+#endif
+		}
 		return 0;
 	}
 	if (strncmp(argv[1], "stop", 4) == 0) {
@@ -581,7 +445,7 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 					break;
 			}
 			if (dev == NULL) {
-				printf("*** NO Device avaiable ***\n");
+				printf("*** No device available ***\n");
 				return 0;
 			} else {
 				usb_display_desc(dev);
@@ -696,18 +560,19 @@ int do_usb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		return 0;
 	}
 #endif /* CONFIG_USB_STORAGE */
-	return cmd_usage(cmdtp);
+	return CMD_RET_USAGE;
 }
 
 #ifdef CONFIG_USB_STORAGE
 U_BOOT_CMD(
 	usb,	5,	1,	do_usb,
 	"USB sub-system",
-	"reset - reset (rescan) USB controller\n"
-	"usb stop [f]  - stop USB [f]=force stop\n"
-	"usb tree  - show USB device tree\n"
+	"start - start (scan) USB controller\n"
+	"usb reset - reset (rescan) USB controller\n"
+	"usb stop [f] - stop USB [f]=force stop\n"
+	"usb tree - show USB device tree\n"
 	"usb info [dev] - show available USB devices\n"
-	"usb storage  - show details of USB storage devices\n"
+	"usb storage - show details of USB storage devices\n"
 	"usb dev [dev] - show or set current USB storage device\n"
 	"usb part [dev] - print partition table of one or all USB storage"
 	" devices\n"
@@ -728,8 +593,9 @@ U_BOOT_CMD(
 U_BOOT_CMD(
 	usb,	5,	1,	do_usb,
 	"USB sub-system",
-	"reset - reset (rescan) USB controller\n"
-	"usb  tree  - show USB device tree\n"
-	"usb  info [dev] - show available USB devices"
+	"start - start (scan) USB controller\n"
+	"usb reset - reset (rescan) USB controller\n"
+	"usb tree - show USB device tree\n"
+	"usb info [dev] - show available USB devices"
 );
 #endif

@@ -54,19 +54,6 @@
 #include <spi_flash.h>
 #include "spi_flash_internal.h"
 
-/* RAMTRON commands common to all devices */
-#define CMD_RAMTRON_WREN	0x06	/* Write Enable */
-#define CMD_RAMTRON_WRDI	0x04	/* Write Disable */
-#define CMD_RAMTRON_RDSR	0x05	/* Read Status Register */
-#define CMD_RAMTRON_WRSR	0x01	/* Write Status Register */
-#define CMD_RAMTRON_READ	0x03	/* Read Data Bytes */
-#define CMD_RAMTRON_WRITE	0x02	/* Write Data Bytes */
-/* not all have those: */
-#define CMD_RAMTRON_FSTRD	0x0b	/* Fast Read (for compatibility - not used here) */
-#define CMD_RAMTRON_SLEEP	0xb9	/* Enter Sleep Mode */
-#define CMD_RAMTRON_RDID	0x9f	/* Read ID */
-#define CMD_RAMTRON_SNR		0xc3	/* Read Serial Number */
-
 /*
  * Properties of supported FRAMs
  * Note: speed is currently not used because we have no method to deliver that
@@ -196,9 +183,9 @@ static int ramtron_common(struct spi_flash *flash,
 		return ret;
 	}
 
-	if (command == CMD_RAMTRON_WRITE) {
+	if (command == CMD_PAGE_PROGRAM) {
 		/* send WREN */
-		ret = spi_flash_cmd(flash->spi, CMD_RAMTRON_WREN, NULL, 0);
+		ret = spi_flash_cmd_write_enable(flash);
 		if (ret < 0) {
 			debug("SF: Enabling Write failed\n");
 			goto releasebus;
@@ -206,7 +193,7 @@ static int ramtron_common(struct spi_flash *flash,
 	}
 
 	/* do the transaction */
-	if (command == CMD_RAMTRON_WRITE)
+	if (command == CMD_PAGE_PROGRAM)
 		ret = spi_flash_cmd_write(flash->spi, cmd, cmd_len, buf, len);
 	else
 		ret = spi_flash_cmd_read(flash->spi, cmd, cmd_len, buf, len);
@@ -223,17 +210,17 @@ static int ramtron_read(struct spi_flash *flash,
 		u32 offset, size_t len, void *buf)
 {
 	return ramtron_common(flash, offset, len, buf,
-		CMD_RAMTRON_READ);
+		CMD_READ_ARRAY_SLOW);
 }
 
 static int ramtron_write(struct spi_flash *flash,
 		u32 offset, size_t len, const void *buf)
 {
 	return ramtron_common(flash, offset, len, (void *)buf,
-		CMD_RAMTRON_WRITE);
+		CMD_PAGE_PROGRAM);
 }
 
-int ramtron_erase(struct spi_flash *flash, u32 offset, size_t len)
+static int ramtron_erase(struct spi_flash *flash, u32 offset, size_t len)
 {
 	debug("SF: Erase of RAMTRON FRAMs is pointless\n");
 	return -1;
@@ -270,7 +257,7 @@ struct spi_flash *spi_fram_probe_ramtron(struct spi_slave *spi, u8 *idcode)
 		 * We COULD have a non JEDEC conformant FRAM here,
 		 * read the status register to verify
 		 */
-		ret = spi_flash_cmd(spi, CMD_RAMTRON_RDSR, &sr, 1);
+		ret = spi_flash_cmd(spi, CMD_READ_STATUS, &sr, 1);
 		if (ret)
 			return NULL;
 
@@ -311,9 +298,6 @@ found:
 	sn->flash.read = ramtron_read;
 	sn->flash.erase = ramtron_erase;
 	sn->flash.size = params->size;
-
-	printf("SF: Detected %s with size ", params->name);
-	print_size(sn->flash.size, "\n");
 
 	return &sn->flash;
 }

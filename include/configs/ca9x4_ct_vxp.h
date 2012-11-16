@@ -30,9 +30,7 @@
 /* Board info register */
 #define SYS_ID				0x10000000
 #define CONFIG_REVISION_TAG		1
-
-/* High Level Configuration Options */
-#define CONFIG_ARMV7			1
+#define CONFIG_SYS_TEXT_BASE		0x60800000
 
 #define CONFIG_SYS_MEMTEST_START	0x60000000
 #define CONFIG_SYS_MEMTEST_END		0x20000000
@@ -40,8 +38,10 @@
 
 #define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
 #define CONFIG_SETUP_MEMORY_TAGS	1
-#define CONFIG_L2_OFF			1
+#define CONFIG_SYS_L2CACHE_OFF		1
 #define CONFIG_INITRD_TAG		1
+
+#define CONFIG_OF_LIBFDT		1
 
 /* Size of malloc() pool */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128 * 1024)
@@ -50,7 +50,6 @@
 #define VEXPRESS_FLASHPROG_FLVPPEN	(1 << 0)
 
 /* SMSC9115 Ethernet from SMSC9118 family */
-#define CONFIG_NET_MULTI
 #define CONFIG_SMC911X			1
 #define CONFIG_SMC911X_32_BIT		1
 #define CONFIG_SMC911X_BASE		0x4E000000
@@ -63,13 +62,14 @@
 #define CONFIG_CONS_INDEX		0
 
 #define CONFIG_BAUDRATE			38400
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 #define CONFIG_SYS_SERIAL0		0x10009000
 #define CONFIG_SYS_SERIAL1		0x1000A000
 
 /* Command line configuration */
 #define CONFIG_CMD_BDI
 #define CONFIG_CMD_DHCP
+#define CONFIG_CMD_PXE
+#define CONFIG_MENU
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_ENV
 #define CONFIG_CMD_FLASH
@@ -78,7 +78,6 @@
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVEENV
-#define CONFIG_NET_MULTI
 #define CONFIG_CMD_RUN
 
 #define CONFIG_CMD_FAT
@@ -86,25 +85,25 @@
 #define CONFIG_MMC			1
 #define CONFIG_CMD_MMC
 #define CONFIG_GENERIC_MMC
+#define CONFIG_ARM_PL180_MMCI
+#define CONFIG_ARM_PL180_MMCI_BASE	0x10005000
+#define CONFIG_SYS_MMC_MAX_BLK_COUNT	127
+#define CONFIG_ARM_PL180_MMCI_CLOCK_FREQ 6250000
 
 /* BOOTP options */
 #define CONFIG_BOOTP_BOOTFILESIZE
 #define CONFIG_BOOTP_BOOTPATH
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
+#define CONFIG_BOOTP_PXE
+#define CONFIG_BOOTP_PXE_CLIENTARCH	0x100
+#define CONFIG_BOOTP_VCI_STRING		"U-boot.armv7.ca9x4_ct_vxp"
 
 /* Miscellaneous configurable options */
 #undef	CONFIG_SYS_CLKS_IN_HZ
 #define CONFIG_SYS_LOAD_ADDR		0x60008000	/* load address */
 #define LINUX_BOOT_PARAM_ADDR		0x60000200
 #define CONFIG_BOOTDELAY		2
-
-/* Stack sizes are set up in start.S using the settings below */
-#define CONFIG_STACKSIZE		(128 * 1024)	/* regular stack */
-#ifdef CONFIG_USE_IRQ
-#define CONFIG_STACKSIZE_IRQ		(4 * 1024)	/* IRQ stack */
-#define CONFIG_STACKSIZE_FIQ		(4 * 1024)	/* FIQ stack */
-#endif
 
 /* Physical Memory Map */
 #define CONFIG_NR_DRAM_BANKS		2
@@ -125,10 +124,12 @@
 #define CONFIG_BOOTCOMMAND		"run bootflash;"
 #define CONFIG_EXTRA_ENV_SETTINGS \
 		"loadaddr=0x80008000\0" \
-		"initrd=0x61000000\0" \
-		"kerneladdr=0x44100000\0" \
-		"initrdaddr=0x44800000\0" \
-		"maxinitrd=0x1800000\0" \
+		"ramdisk_addr_r=0x61000000\0" \
+		"kernel_addr=0x44100000\0" \
+		"ramdisk_addr=0x44800000\0" \
+		"maxramdisk=0x1800000\0" \
+		"pxefile_addr_r=0x88000000\0" \
+		"kernel_addr_r=0x80008000\0" \
 		"console=ttyAMA0,38400n8\0" \
 		"dram=1024M\0" \
 		"root=/dev/sda1 rw\0" \
@@ -138,8 +139,8 @@
 			"mem=${dram} mtdparts=${mtd} mmci.fmax=190000 " \
 			"devtmpfs.mount=0  vmalloc=256M\0" \
 		"bootflash=run flashargs; " \
-			"cp ${initrdaddr} ${initrd} ${maxinitrd}; " \
-			"bootm ${kerneladdr} ${initrd}\0"
+			"cp ${ramdisk_addr} ${ramdisk_addr_r} ${maxramdisk}; " \
+			"bootm ${kernel_addr} ${ramdisk_addr_r}\0"
 
 /* FLASH and environment organization */
 #define PHYS_FLASH_SIZE			0x04000000	/* 64MB */

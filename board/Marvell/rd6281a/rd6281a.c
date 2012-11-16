@@ -25,6 +25,7 @@
 #include <common.h>
 #include <miiphy.h>
 #include <netdev.h>
+#include <asm/arch/cpu.h>
 #include <asm/arch/kirkwood.h>
 #include <asm/arch/mpp.h>
 #include "rd6281a.h"
@@ -96,7 +97,7 @@ int board_early_init_f(void)
 		MPP49_GPIO,
 		0
 	};
-	kirkwood_mpp_conf(kwmpp_config);
+	kirkwood_mpp_conf(kwmpp_config, NULL);
 	return 0;
 }
 
@@ -139,11 +140,11 @@ void mv_phy_88e1116_init(char *name)
 	miiphy_write(name, devadr, MV88E1116_PGADR_REG, 0);
 
 	/* reset the phy */
-	if (miiphy_read (name, devadr, PHY_BMCR, &reg) != 0) {
+	if (miiphy_read (name, devadr, MII_BMCR, &reg) != 0) {
 		printf("Err..(%s) PHY status read failed\n", __FUNCTION__);
 		return;
 	}
-	if (miiphy_write (name, devadr, PHY_BMCR, reg | 0x8000) != 0) {
+	if (miiphy_write (name, devadr, MII_BMCR, reg | 0x8000) != 0) {
 		printf("Err..(%s) PHY reset failed\n", __FUNCTION__);
 		return;
 	}

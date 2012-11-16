@@ -46,7 +46,7 @@
 #define SCSI_VEND_ID 0x10b9
 #define SCSI_DEV_ID  0x5288
 
-#else
+#elif !defined(CONFIG_SCSI_AHCI_PLAT)
 #error no scsi device defined
 #endif
 
@@ -174,7 +174,7 @@ removable:
 		scsi_curr_dev = -1;
 }
 
-
+#ifdef CONFIG_PCI
 void scsi_init(void)
 {
 	int busdevfunc;
@@ -192,150 +192,21 @@ void scsi_init(void)
 	scsi_low_level_init(busdevfunc);
 	scsi_scan(1);
 }
+#endif
 
+#ifdef CONFIG_PARTITIONS
 block_dev_desc_t * scsi_get_dev(int dev)
 {
 	return (dev < CONFIG_SYS_SCSI_MAX_DEVICE) ? &scsi_dev_desc[dev] : NULL;
 }
-
+#endif
 
 /******************************************************************************
  * scsi boot command intepreter. Derived from diskboot
  */
 int do_scsiboot (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
-	char *boot_device = NULL;
-	char *ep;
-	int dev, part = 0;
-	ulong addr, cnt;
-	disk_partition_t info;
-	image_header_t *hdr;
-	int rcode = 0;
-#if defined(CONFIG_FIT)
-	const void *fit_hdr = NULL;
-#endif
-
-	switch (argc) {
-	case 1:
-		addr = CONFIG_SYS_LOAD_ADDR;
-		boot_device = getenv ("bootdevice");
-		break;
-	case 2:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = getenv ("bootdevice");
-		break;
-	case 3:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = argv[2];
-		break;
-	default:
-		return cmd_usage(cmdtp);
-	}
-
-	if (!boot_device) {
-		puts ("\n** No boot device **\n");
-		return 1;
-	}
-
-	dev = simple_strtoul(boot_device, &ep, 16);
-	printf("booting from dev %d\n",dev);
-	if (scsi_dev_desc[dev].type == DEV_TYPE_UNKNOWN) {
-		printf ("\n** Device %d not available\n", dev);
-		return 1;
-	}
-
-	if (*ep) {
-		if (*ep != ':') {
-			puts ("\n** Invalid boot device, use `dev[:part]' **\n");
-			return 1;
-		}
-		part = simple_strtoul(++ep, NULL, 16);
-	}
-	if (get_partition_info (&scsi_dev_desc[dev], part, &info)) {
-		printf("error reading partinfo\n");
-		return 1;
-	}
-	if ((strncmp((char *)(info.type), BOOT_PART_TYPE, sizeof(info.type)) != 0) &&
-	    (strncmp((char *)(info.type), BOOT_PART_COMP, sizeof(info.type)) != 0)) {
-		printf ("\n** Invalid partition type \"%.32s\""
-			" (expect \"" BOOT_PART_TYPE "\")\n",
-			info.type);
-		return 1;
-	}
-
-	printf ("\nLoading from SCSI device %d, partition %d: "
-		"Name: %.32s  Type: %.32s\n",
-		dev, part, info.name, info.type);
-
-	debug ("First Block: %ld,  # of blocks: %ld, Block Size: %ld\n",
-		info.start, info.size, info.blksz);
-
-	if (scsi_read (dev, info.start, 1, (ulong *)addr) != 1) {
-		printf ("** Read error on %d:%d\n", dev, part);
-		return 1;
-	}
-
-	switch (genimg_get_format ((void *)addr)) {
-	case IMAGE_FORMAT_LEGACY:
-		hdr = (image_header_t *)addr;
-
-		if (!image_check_hcrc (hdr)) {
-			puts ("\n** Bad Header Checksum **\n");
-			return 1;
-		}
-
-		image_print_contents (hdr);
-		cnt = image_get_image_size (hdr);
-		break;
-#if defined(CONFIG_FIT)
-	case IMAGE_FORMAT_FIT:
-		fit_hdr = (const void *)addr;
-		puts ("Fit image detected...\n");
-
-		cnt = fit_get_size (fit_hdr);
-		break;
-#endif
-	default:
-		puts ("** Unknown image type\n");
-		return 1;
-	}
-
-	cnt += info.blksz - 1;
-	cnt /= info.blksz;
-	cnt -= 1;
-
-	if (scsi_read (dev, info.start+1, cnt,
-		      (ulong *)(addr+info.blksz)) != cnt) {
-		printf ("** Read error on %d:%d\n", dev, part);
-		return 1;
-	}
-
-#if defined(CONFIG_FIT)
-	/* This cannot be done earlier, we need complete FIT image in RAM first */
-	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
-		if (!fit_check_format (fit_hdr)) {
-			puts ("** Bad FIT image format\n");
-			return 1;
-		}
-		fit_print_contents (fit_hdr);
-	}
-#endif
-
-	/* Loading ok, update default load address */
-	load_addr = addr;
-
-	flush_cache (addr, (cnt+1)*info.blksz);
-
-	/* Check if we should attempt an auto-start */
-	if (((ep = getenv("autostart")) != NULL) && (strcmp(ep,"yes") == 0)) {
-		char *local_args[2];
-		extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
-		local_args[0] = argv[0];
-		local_args[1] = NULL;
-		printf ("Automatic boot of image at addr 0x%08lX ...\n", addr);
-		rcode = do_bootm (cmdtp, 0, 1, local_args);
-	}
-	 return rcode;
+	return common_diskboot(cmdtp, "scsi", argc, argv);
 }
 
 /*********************************************************************************
@@ -344,10 +215,11 @@ int do_scsiboot (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	switch (argc) {
-    case 0:
-    case 1:	return cmd_usage(cmdtp);
+	case 0:
+	case 1:
+		return CMD_RET_USAGE;
 
-    case 2:
+	case 2:
 			if (strncmp(argv[1],"res",3) == 0) {
 				printf("\nReset SCSI\n");
 				scsi_bus_reset();
@@ -392,7 +264,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 					printf("\nno SCSI devices available\n");
 				return 1;
 			}
-			return cmd_usage(cmdtp);
+			return CMD_RET_USAGE;
 	case 3:
 			if (strncmp(argv[1],"dev",3) == 0) {
 				int dev = (int)simple_strtoul(argv[2], NULL, 10);
@@ -420,7 +292,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				}
 				return 1;
 			}
-			return cmd_usage(cmdtp);
+			return CMD_RET_USAGE;
     default:
 			/* at least 4 args */
 			if (strcmp(argv[1],"read") == 0) {
@@ -435,7 +307,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 				return 0;
 			}
 	} /* switch */
-	return cmd_usage(cmdtp);
+	return CMD_RET_USAGE;
 }
 
 /****************************************************************************************

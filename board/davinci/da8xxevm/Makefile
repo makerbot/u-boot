@@ -27,10 +27,10 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
-COBJS-y	+= common.o
 COBJS-$(CONFIG_MACH_DAVINCI_DA830_EVM)	+= da830evm.o
 COBJS-$(CONFIG_MACH_DAVINCI_DA850_EVM)	+= da850evm.o
-COBJS-$(CONFIG_MACH_DAVINCI_MANHATTAN_A07) += mb_manhattan_a07.o
+COBJS-$(CONFIG_MACH_DAVINICI_MANHATTAN_A07)	+= mb_manhattan_a07.o
+COBJS-$(CONFIG_MACH_DAVINCI_HAWK)	+= hawkboard.o
 
 COBJS   := $(COBJS-y)
 
@@ -40,12 +40,6 @@ SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
 	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
-
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak *~ .depend
 
 #########################################################################
 # This is for $(obj).depend target

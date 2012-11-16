@@ -11,6 +11,9 @@
  *		nandwrite.c by Steven J. Hill (sjhill@realitydiluted.com)
  *			       and Thomas Gleixner (tglx@linutronix.de)
  *
+ * Copyright (C) 2008 Nokia Corporation: drop_ffs() function by
+ * Artem Bityutskiy <dedekind1@gmail.com> from mtd-utils
+ *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
@@ -54,12 +57,6 @@ typedef struct mtd_info	  mtd_info_t;
 #define cpu_to_je16(x) (x)
 #define cpu_to_je32(x) (x)
 
-/*****************************************************************************/
-static int nand_block_bad_scrub(struct mtd_info *mtd, loff_t ofs, int getchip)
-{
-	return 0;
-}
-
 /**
  * nand_erase_opts: - erase NAND flash with support for various options
  *		      (jffs2 formating)
@@ -79,7 +76,6 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 	int bbtest = 1;
 	int result;
 	int percent_complete = -1;
-	int (*nand_block_bad_old)(struct mtd_info *, loff_t, int) = NULL;
 	const char *mtd_device = meminfo->name;
 	struct mtd_oob_ops oob_opts;
 	struct nand_chip *chip = meminfo->priv;
@@ -107,17 +103,15 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 	 * and disable bad block table while erasing.
 	 */
 	if (opts->scrub) {
-		struct nand_chip *priv_nand = meminfo->priv;
-
-		nand_block_bad_old = priv_nand->block_bad;
-		priv_nand->block_bad = nand_block_bad_scrub;
-		/* we don't need the bad block table anymore...
+		erase.scrub = opts->scrub;
+		/*
+		 * We don't need the bad block table anymore...
 		 * after scrub, there are no bad blocks left!
 		 */
-		if (priv_nand->bbt) {
-			kfree(priv_nand->bbt);
+		if (chip->bbt) {
+			kfree(chip->bbt);
 		}
-		priv_nand->bbt = NULL;
+		chip->bbt = NULL;
 	}
 
 	for (erased_length = 0;
@@ -201,12 +195,8 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 	if (!opts->quiet)
 		printf("\n");
 
-	if (nand_block_bad_old) {
-		struct nand_chip *priv_nand = meminfo->priv;
-
-		priv_nand->block_bad = nand_block_bad_old;
-		priv_nand->scan_bbt(meminfo);
-	}
+	if (opts->scrub)
+		chip->scan_bbt(meminfo);
 
 	return 0;
 }
@@ -216,12 +206,6 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 /******************************************************************************
  * Support for locking / unlocking operations of some NAND devices
  *****************************************************************************/
-
-#define NAND_CMD_LOCK		0x2a
-#define NAND_CMD_LOCK_TIGHT	0x2c
-#define NAND_CMD_UNLOCK1	0x23
-#define NAND_CMD_UNLOCK2	0x24
-#define NAND_CMD_LOCK_STATUS	0x7a
 
 /**
  * nand_lock: Set all pages of NAND flash chip to the LOCK or LOCK-TIGHT
@@ -281,7 +265,6 @@ int nand_lock(struct mtd_info *mtd, int tight)
  *			>0 lock status:
  *			  bitfield with the following combinations:
  *			  NAND_LOCK_STATUS_TIGHT: page in tight state
- *			  NAND_LOCK_STATUS_LOCK:  page locked
  *			  NAND_LOCK_STATUS_UNLOCK: page unlocked
  *
  */
@@ -310,7 +293,6 @@ int nand_get_lock_status(struct mtd_info *mtd, loff_t offset)
 	chip->cmdfunc(mtd, NAND_CMD_LOCK_STATUS, -1, page & chip->pagemask);
 
 	ret = chip->read_byte(mtd) & (NAND_LOCK_STATUS_TIGHT
-					  | NAND_LOCK_STATUS_LOCK
 					  | NAND_LOCK_STATUS_UNLOCK);
 
  out:
@@ -327,18 +309,21 @@ int nand_get_lock_status(struct mtd_info *mtd, loff_t offset)
  * @param start		start byte address
  * @param length	number of bytes to unlock (must be a multiple of
  *			page size nand->writesize)
+ * @param allexcept	if set, unlock everything not selected
  *
  * @return		0 on success, -1 in case of error
  */
-int nand_unlock(struct mtd_info *mtd, ulong start, ulong length)
+int nand_unlock(struct mtd_info *mtd, loff_t start, size_t length,
+	int allexcept)
 {
 	int ret = 0;
 	int chipnr;
 	int status;
 	int page;
 	struct nand_chip *chip = mtd->priv;
-	printf ("nand_unlock: start: %08x, length: %d!\n",
-		(int)start, (int)length);
+
+	debug("nand_unlock%s: start: %08llx, length: %d!\n",
+		allexcept ? " (allexcept)" : "", start, length);
 
 	/* select the NAND device */
 	chipnr = (int)(start >> chip->chip_shift);
@@ -378,6 +363,15 @@ int nand_unlock(struct mtd_info *mtd, ulong start, ulong length)
 
 	/* submit ADDRESS of LAST page to unlock */
 	page += (int)(length >> chip->page_shift);
+
+	/*
+	 * Page addresses for unlocking are supposed to be block-aligned.
+	 * At least some NAND chips use the low bit to indicate that the
+	 * page range should be inverted.
+	 */
+	if (allexcept)
+		page |= 1;
+
 	chip->cmdfunc(mtd, NAND_CMD_UNLOCK2, -1, page & chip->pagemask);
 
 	/* call wait ready function */
@@ -436,6 +430,29 @@ static int check_skip_len(nand_info_t *nand, loff_t offset, size_t length)
 	return ret;
 }
 
+#ifdef CONFIG_CMD_NAND_TRIMFFS
+static size_t drop_ffs(const nand_info_t *nand, const u_char *buf,
+			const size_t *len)
+{
+	size_t i, l = *len;
+
+	for (i = l - 1; i >= 0; i--)
+		if (buf[i] != 0xFF)
+			break;
+
+	/* The resulting length must be aligned to the minimum flash I/O size */
+	l = i + 1;
+	l = (l + nand->writesize - 1) / nand->writesize;
+	l *=  nand->writesize;
+
+	/*
+	 * since the input length may be unaligned, prevent access past the end
+	 * of the buffer
+	 */
+	return min(l, *len);
+}
+#endif
+
 /**
  * nand_write_skip_bad:
  *
@@ -447,16 +464,36 @@ static int check_skip_len(nand_info_t *nand, loff_t offset, size_t length)
  * @param nand  	NAND device
  * @param offset	offset in flash
  * @param length	buffer length
- * @param buf           buffer to read from
+ * @param buffer        buffer to read from
+ * @param flags		flags modifying the behaviour of the write to NAND
  * @return		0 in case of success
  */
 int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
-			u_char *buffer)
+			u_char *buffer, int flags)
 {
-	int rval;
+	int rval = 0, blocksize;
 	size_t left_to_write = *length;
 	u_char *p_buffer = buffer;
 	int need_skip;
+
+#ifdef CONFIG_CMD_NAND_YAFFS
+	if (flags & WITH_YAFFS_OOB) {
+		if (flags & ~WITH_YAFFS_OOB)
+			return -EINVAL;
+
+		int pages;
+		pages = nand->erasesize / nand->writesize;
+		blocksize = (pages * nand->oobsize) + nand->erasesize;
+		if (*length % (nand->writesize + nand->oobsize)) {
+			printf ("Attempt to write incomplete page"
+				" in yaffs mode\n");
+			return -EINVAL;
+		}
+	} else
+#endif
+	{
+		blocksize = nand->erasesize;
+	}
 
 	/*
 	 * nand_write() handles unaligned, partial page writes.
@@ -482,7 +519,7 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		return -EINVAL;
 	}
 
-	if (!need_skip) {
+	if (!need_skip && !(flags & WITH_DROP_FFS)) {
 		rval = nand_write (nand, offset, length, buffer);
 		if (rval == 0)
 			return 0;
@@ -495,7 +532,7 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 
 	while (left_to_write > 0) {
 		size_t block_offset = offset & (nand->erasesize - 1);
-		size_t write_size;
+		size_t write_size, truncated_write_size;
 
 		WATCHDOG_RESET ();
 
@@ -506,12 +543,54 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 			continue;
 		}
 
-		if (left_to_write < (nand->erasesize - block_offset))
+		if (left_to_write < (blocksize - block_offset))
 			write_size = left_to_write;
 		else
-			write_size = nand->erasesize - block_offset;
+			write_size = blocksize - block_offset;
 
-		rval = nand_write (nand, offset, &write_size, p_buffer);
+#ifdef CONFIG_CMD_NAND_YAFFS
+		if (flags & WITH_YAFFS_OOB) {
+			int page, pages;
+			size_t pagesize = nand->writesize;
+			size_t pagesize_oob = pagesize + nand->oobsize;
+			struct mtd_oob_ops ops;
+
+			ops.len = pagesize;
+			ops.ooblen = nand->oobsize;
+			ops.mode = MTD_OOB_AUTO;
+			ops.ooboffs = 0;
+
+			pages = write_size / pagesize_oob;
+			for (page = 0; page < pages; page++) {
+				WATCHDOG_RESET();
+
+				ops.datbuf = p_buffer;
+				ops.oobbuf = ops.datbuf + pagesize;
+
+				rval = nand->write_oob(nand, offset, &ops);
+				if (rval != 0)
+					break;
+
+				offset += pagesize;
+				p_buffer += pagesize_oob;
+			}
+		}
+		else
+#endif
+		{
+			truncated_write_size = write_size;
+#ifdef CONFIG_CMD_NAND_TRIMFFS
+			if (flags & WITH_DROP_FFS)
+				truncated_write_size = drop_ffs(nand, p_buffer,
+						&write_size);
+#endif
+
+			rval = nand_write(nand, offset, &truncated_write_size,
+					p_buffer);
+			offset += write_size;
+			p_buffer += write_size;
+		}
+
 		if (rval != 0) {
 			printf ("NAND write to offset %llx failed %d\n",
 				offset, rval);
@@ -520,8 +599,6 @@ int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		}
 
 		left_to_write -= write_size;
-		offset        += write_size;
-		p_buffer      += write_size;
 	}
 
 	return 0;

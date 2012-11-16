@@ -33,11 +33,14 @@
  * MA 02111-1307 USA
  */
 #include <common.h>
+#include <malloc.h>
+#include <errno.h>
 #include <netdev.h>
 #include <asm/io.h>
 #include <asm/arch/systimer.h>
 #include <asm/arch/sysctrl.h>
 #include <asm/arch/wdt.h>
+#include "../drivers/mmc/arm_pl180_mmci.h"
 
 static ulong timestamp;
 static ulong lastdec;
@@ -82,6 +85,32 @@ int board_eth_init(bd_t *bis)
 	int rc = 0;
 #ifdef CONFIG_SMC911X
 	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
+#endif
+	return rc;
+}
+
+int cpu_mmc_init(bd_t *bis)
+{
+	int rc = 0;
+	(void) bis;
+#ifdef CONFIG_ARM_PL180_MMCI
+	struct pl180_mmc_host *host;
+
+	host = malloc(sizeof(struct pl180_mmc_host));
+	if (!host)
+		return -ENOMEM;
+	memset(host, 0, sizeof(*host));
+
+	strcpy(host->name, "MMC");
+	host->base = (struct sdi_registers *)CONFIG_ARM_PL180_MMCI_BASE;
+	host->pwr_init = INIT_PWR;
+	host->clkdiv_init = SDI_CLKCR_CLKDIV_INIT_V1 | SDI_CLKCR_CLKEN;
+	host->voltages = VOLTAGE_WINDOW_MMC;
+	host->caps = 0;
+	host->clock_in = ARM_MCLK;
+	host->clock_min = ARM_MCLK / (2 * (SDI_CLKCR_CLKDIV_INIT_V1 + 1));
+	host->clock_max = CONFIG_ARM_PL180_MMCI_CLOCK_FREQ;
+	rc = arm_pl180_mmci_init(host);
 #endif
 	return rc;
 }
@@ -189,11 +218,6 @@ void reset_timer_masked(void)
 	timestamp = 0;
 }
 
-void reset_timer(void)
-{
-	reset_timer_masked();
-}
-
 ulong get_timer_masked(void)
 {
 	ulong now = readl(&systimer_base->timer0value) / 1000;
@@ -220,4 +244,14 @@ void lowlevel_init(void)
 
 ulong get_board_rev(void){
 	return readl((u32 *)SYS_ID);
+}
+
+unsigned long long get_ticks(void)
+{
+	return get_timer(0);
+}
+
+ulong get_tbclk (void)
+{
+	return (ulong)CONFIG_SYS_HZ;
 }

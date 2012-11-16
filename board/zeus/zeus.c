@@ -40,11 +40,9 @@ DECLARE_GLOBAL_DATA_PTR;
 
 extern flash_info_t flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips	*/
 extern env_t *env_ptr;
-extern uchar default_environment[];
 
 ulong flash_get_size(ulong base, int banknum);
 void env_crc_update(void);
-int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 
 static u32 start_time;
 
@@ -162,7 +160,8 @@ int misc_init_r(void)
  */
 int checkboard(void)
 {
-	char *s = getenv("serial#");
+	char buf[64];
+	int i = getenv_f("serial#", buf, sizeof(buf));
 
 	puts("Board: Zeus-");
 
@@ -173,9 +172,9 @@ int checkboard(void)
 
 	puts(" of BulletEndPoint");
 
-	if (s != NULL) {
+	if (i > 0) {
 		puts(", serial# ");
-		puts(s);
+		puts(buf);
 	}
 	putc('\n');
 

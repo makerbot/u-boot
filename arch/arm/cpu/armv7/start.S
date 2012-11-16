@@ -32,6 +32,8 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <version.h>
+#include <asm/system.h>
+#include <linux/linkage.h>
 
 .globl _start
 _start: b	reset
@@ -42,7 +44,16 @@ _start: b	reset
 	ldr	pc, _not_used
 	ldr	pc, _irq
 	ldr	pc, _fiq
-
+#ifdef CONFIG_SPL_BUILD
+_undefined_instruction: .word _undefined_instruction
+_software_interrupt:	.word _software_interrupt
+_prefetch_abort:	.word _prefetch_abort
+_data_abort:		.word _data_abort
+_not_used:		.word _not_used
+_irq:			.word _irq
+_fiq:			.word _fiq
+_pad:			.word 0x12345678 /* now 16*4=64 */
+#else
 _undefined_instruction: .word undefined_instruction
 _software_interrupt:	.word software_interrupt
 _prefetch_abort:	.word prefetch_abort
@@ -51,6 +62,8 @@ _not_used:		.word not_used
 _irq:			.word irq
 _fiq:			.word fiq
 _pad:			.word 0x12345678 /* now 16*4=64 */
+#endif	/* CONFIG_SPL_BUILD */
+
 .global _end_vect
 _end_vect:
 
@@ -77,8 +90,16 @@ _TEXT_BASE:
 _bss_start_ofs:
 	.word __bss_start - _start
 
+.global	_image_copy_end_ofs
+_image_copy_end_ofs:
+	.word 	__image_copy_end - _start
+
 .globl _bss_end_ofs
 _bss_end_ofs:
+	.word __bss_end__ - _start
+
+.globl _end_ofs
+_end_ofs:
 	.word _end - _start
 
 #ifdef CONFIG_USE_IRQ
@@ -103,6 +124,7 @@ IRQ_STACK_START_IN:
  */
 
 reset:
+	bl	save_boot_params
 	/*
 	 * set the cpu to SVC32 mode
 	 */
@@ -111,31 +133,25 @@ reset:
 	orr	r0, r0, #0xd3
 	msr	cpsr,r0
 
-#if (CONFIG_OMAP34XX)
-	/* Copy vectors to mask ROM indirect addr */
-	adr	r0, _start		@ r0 <- current position of code
-	add	r0, r0, #4		@ skip reset vector
-	mov	r2, #64			@ r2 <- size to copy
-	add	r2, r0, r2		@ r2 <- source end address
-	mov	r1, #SRAM_OFFSET0	@ build vect addr
-	mov	r3, #SRAM_OFFSET1
-	add	r1, r1, r3
-	mov	r3, #SRAM_OFFSET2
-	add	r1, r1, r3
-next:
-	ldmia	r0!, {r3 - r10}		@ copy from source address [r0]
-	stmia	r1!, {r3 - r10}		@ copy to   target address [r1]
-	cmp	r0, r2			@ until source end address [r2]
-	bne	next			@ loop until equal */
-#if !defined(CONFIG_SYS_NAND_BOOT) && !defined(CONFIG_SYS_ONENAND_BOOT)
-	/* No need to copy/exec the clock code - DPLL adjust already done
-	 * in NAND/oneNAND Boot.
-	 */
-	bl	cpy_clk_code		@ put dpll adjust code behind vectors
-#endif /* NAND Boot */
+/*
+ * Setup vector:
+ * (OMAP4 spl TEXT_BASE is not 32 byte aligned.
+ * Continue to use ROM code vector only in OMAP4 spl)
+ */
+#if !(defined(CONFIG_OMAP44XX) && defined(CONFIG_SPL_BUILD))
+	/* Set V=0 in CP15 SCTRL register - for VBAR to point to vector */
+	mrc	p15, 0, r0, c1, c0, 0	@ Read CP15 SCTRL Register
+	bic	r0, #CR_V		@ V = 0
+	mcr	p15, 0, r0, c1, c0, 0	@ Write CP15 SCTRL Register
+
+	/* Set vector address in CP15 VBAR register */
+	ldr	r0, =_start
+	mcr	p15, 0, r0, c12, c0, 0	@Set VBAR
 #endif
+
 	/* the mask ROM code should have PLL and others stable */
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
+	bl	cpu_init_cp15
 	bl	cpu_init_crit
 #endif
 
@@ -148,6 +164,7 @@ call_board_init_f:
 
 /*------------------------------------------------------------------------------*/
 
+#ifndef CONFIG_SPL_BUILD
 /*
  * void relocate_code (addr_sp, gd, addr_moni)
  *
@@ -155,8 +172,7 @@ call_board_init_f:
  * after relocating the monitor code.
  *
  */
-	.globl	relocate_code
-relocate_code:
+ENTRY(relocate_code)
 	mov	r4, r0	/* save addr_sp */
 	mov	r5, r1	/* save addr of gd */
 	mov	r6, r2	/* save addr of destination */
@@ -166,13 +182,11 @@ stack_setup:
 	mov	sp, r4
 
 	adr	r0, _start
-#ifndef CONFIG_PRELOADER
 	cmp	r0, r6
+	moveq	r9, #0		/* no relocation. relocation offset(r9) = 0 */
 	beq	clear_bss		/* skip relocation */
-#endif
 	mov	r1, r6			/* r1 <- scratch for copy_loop */
-	ldr	r2, _TEXT_BASE
-	ldr	r3, _bss_start_ofs
+	ldr	r3, _image_copy_end_ofs
 	add	r2, r0, r3		/* r2 <- source end address	    */
 
 copy_loop:
@@ -181,7 +195,6 @@ copy_loop:
 	cmp	r0, r2			/* until source end address [r2]    */
 	blo	copy_loop
 
-#ifndef CONFIG_PRELOADER
 	/*
 	 * fix .rel.dyn relocations
 	 */
@@ -220,27 +233,52 @@ fixnext:
 	add	r2, r2, #8		/* each rel.dyn entry is 8 bytes */
 	cmp	r2, r3
 	blo	fixloop
+	b	clear_bss
+_rel_dyn_start_ofs:
+	.word __rel_dyn_start - _start
+_rel_dyn_end_ofs:
+	.word __rel_dyn_end - _start
+_dynsym_start_ofs:
+	.word __dynsym_start - _start
 
 clear_bss:
 	ldr	r0, _bss_start_ofs
 	ldr	r1, _bss_end_ofs
-	ldr	r3, _TEXT_BASE		/* Text base */
 	mov	r4, r6			/* reloc addr */
 	add	r0, r0, r4
 	add	r1, r1, r4
 	mov	r2, #0x00000000		/* clear			    */
 
-clbss_l:str	r2, [r0]		/* clear loop...		    */
+clbss_l:cmp	r0, r1			/* clear loop... */
+	bhs	clbss_e			/* if reached end of bss, exit */
+	str	r2, [r0]
 	add	r0, r0, #4
-	cmp	r0, r1
-	bne	clbss_l
-#endif	/* #ifndef CONFIG_PRELOADER */
+	b	clbss_l
+clbss_e:
 
 /*
  * We are done. Do not return, instead branch to second part of board
  * initialization, now running from RAM.
  */
 jump_2_ram:
+/*
+ * If I-cache is enabled invalidate it
+ */
+#ifndef CONFIG_SYS_ICACHE_OFF
+	mcr	p15, 0, r0, c7, c5, 0	@ invalidate icache
+	mcr     p15, 0, r0, c7, c10, 4	@ DSB
+	mcr     p15, 0, r0, c7, c5, 4	@ ISB
+#endif
+/*
+ * Move vector table
+ */
+#if !defined(CONFIG_TEGRA20)
+	/* Set vector address in CP15 VBAR register */
+	ldr     r0, =_start
+	add     r0, r0, r9
+	mcr     p15, 0, r0, c12, c0, 0  @Set VBAR
+#endif /* !Tegra20 */
+
 	ldr	r0, _board_init_r_ofs
 	adr	r1, _start
 	add	lr, r0, r1
@@ -253,29 +291,41 @@ jump_2_ram:
 
 _board_init_r_ofs:
 	.word board_init_r - _start
-
-_rel_dyn_start_ofs:
-	.word __rel_dyn_start - _start
-_rel_dyn_end_ofs:
-	.word __rel_dyn_end - _start
-_dynsym_start_ofs:
-	.word __dynsym_start - _start
+ENDPROC(relocate_code)
+#endif
 
 /*************************************************************************
  *
- * CPU_init_critical registers
+ * void save_boot_params(u32 r0, u32 r1, u32 r2, u32 r3)
+ *	__attribute__((weak));
  *
- * setup important registers
- * setup memory timing
+ * Stack pointer is not yet initialized at this moment
+ * Don't save anything to stack even if compiled with -O0
  *
  *************************************************************************/
-cpu_init_crit:
+ENTRY(save_boot_params)
+	bx	lr			@ back to my caller
+ENDPROC(save_boot_params)
+	.weak	save_boot_params
+
+/*************************************************************************
+ *
+ * cpu_init_cp15
+ *
+ * Setup CP15 registers (cache, MMU, TLBs). The I-cache is turned on unless
+ * CONFIG_SYS_ICACHE_OFF is defined.
+ *
+ *************************************************************************/
+ENTRY(cpu_init_cp15)
 	/*
 	 * Invalidate L1 I/D
 	 */
 	mov	r0, #0			@ set up for MCR
 	mcr	p15, 0, r0, c8, c7, 0	@ invalidate TLBs
 	mcr	p15, 0, r0, c7, c5, 0	@ invalidate icache
+	mcr	p15, 0, r0, c7, c5, 6	@ invalidate BP array
+	mcr     p15, 0, r0, c7, c10, 4	@ DSB
+	mcr     p15, 0, r0, c7, c5, 4	@ ISB
 
 	/*
 	 * disable MMU stuff and caches
@@ -284,19 +334,37 @@ cpu_init_crit:
 	bic	r0, r0, #0x00002000	@ clear bits 13 (--V-)
 	bic	r0, r0, #0x00000007	@ clear bits 2:0 (-CAM)
 	orr	r0, r0, #0x00000002	@ set bit 1 (--A-) Align
-	orr	r0, r0, #0x00000800	@ set bit 12 (Z---) BTB
+	orr	r0, r0, #0x00000800	@ set bit 11 (Z---) BTB
+#ifdef CONFIG_SYS_ICACHE_OFF
+	bic	r0, r0, #0x00001000	@ clear bit 12 (I) I-cache
+#else
+	orr	r0, r0, #0x00001000	@ set bit 12 (I) I-cache
+#endif
 	mcr	p15, 0, r0, c1, c0, 0
+	mov	pc, lr			@ back to my caller
+ENDPROC(cpu_init_cp15)
 
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
+/*************************************************************************
+ *
+ * CPU_init_critical registers
+ *
+ * setup important registers
+ * setup memory timing
+ *
+ *************************************************************************/
+ENTRY(cpu_init_crit)
 	/*
 	 * Jump to board specific initialization...
 	 * The Mask ROM will have already initialized
 	 * basic memory. Go here to bump up clock rate and handle
 	 * wake up conditions.
 	 */
-	mov	ip, lr			@ persevere link reg across call
-	bl	lowlevel_init		@ go setup pll,mux,memory
-	mov	lr, ip			@ restore link
-	mov	pc, lr			@ back to my caller
+	b	lowlevel_init		@ go setup pll,mux,memory
+ENDPROC(cpu_init_crit)
+#endif
+
+#ifndef CONFIG_SPL_BUILD
 /*
  *************************************************************************
  *
@@ -484,4 +552,5 @@ fiq:
 	bad_save_user_regs
 	bl	do_fiq
 
-#endif
+#endif /* CONFIG_USE_IRQ */
+#endif /* CONFIG_SPL_BUILD */

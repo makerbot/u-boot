@@ -24,13 +24,12 @@
  */
 
 #include <common.h>
-
+#include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_pit.h>
 #include <asm/arch/at91_gpbr.h>
 #include <asm/arch/clk.h>
-#include <asm/arch/io.h>
 
 #ifndef CONFIG_SYS_AT91_MAIN_CLOCK
 #define CONFIG_SYS_AT91_MAIN_CLOCK 0
@@ -44,7 +43,7 @@ int arch_cpu_init(void)
 void arch_preboot_os(void)
 {
 	ulong cpiv;
-	at91_pit_t *pit = (at91_pit_t *) AT91_PIT_BASE;
+	at91_pit_t *pit = (at91_pit_t *) ATMEL_BASE_PIT;
 
 	cpiv = AT91_PIT_MR_PIV_MASK(readl(&pit->piir));
 
@@ -61,7 +60,7 @@ int print_cpuinfo(void)
 {
 	char buf[32];
 
-	printf("CPU: %s\n", CONFIG_SYS_AT91_CPU_NAME);
+	printf("CPU: %s\n", ATMEL_CPU_NAME);
 	printf("Crystal frequency: %8s MHz\n",
 					strmhz(buf, get_main_clk_rate()));
 	printf("CPU clock        : %8s MHz\n",
@@ -72,29 +71,3 @@ int print_cpuinfo(void)
 	return 0;
 }
 #endif
-
-#ifdef CONFIG_BOOTCOUNT_LIMIT
-/*
- * We combine the BOOTCOUNT_MAGIC and bootcount in one 32-bit register.
- * This is done so we need to use only one of the four GPBR registers.
- */
-void bootcount_store (ulong a)
-{
-	at91_gpbr_t *gpbr = (at91_gpbr_t *) AT91_GPR_BASE;
-
-	writel((BOOTCOUNT_MAGIC & 0xffff0000) | (a & 0x0000ffff),
-		&gpbr->reg[AT91_GPBR_INDEX_BOOTCOUNT]);
-}
-
-ulong bootcount_load (void)
-{
-	at91_gpbr_t *gpbr = (at91_gpbr_t *) AT91_GPR_BASE;
-
-	ulong val = readl(&gpbr->reg[AT91_GPBR_INDEX_BOOTCOUNT]);
-	if ((val & 0xffff0000) != (BOOTCOUNT_MAGIC & 0xffff0000))
-		return 0;
-	else
-		return val & 0x0000ffff;
-}
-
-#endif /* CONFIG_BOOTCOUNT_LIMIT */

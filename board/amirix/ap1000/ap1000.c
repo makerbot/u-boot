@@ -37,17 +37,19 @@ int board_pre_init (void)
 /** serial number and platform display at startup */
 int checkboard (void)
 {
-	char *s = getenv ("serial#");
-	char *e;
+	char buf[64];
+	int l = getenv_f("serial#", buf, sizeof(buf));
 
 	/* After a loadace command, the SystemAce control register is left in a wonky state. */
 	/* this code did not work in board_pre_init */
 	unsigned char *p = (unsigned char *) AP1000_SYSACE_REGBASE;
+	unsigned int *revision_reg_ptr = (unsigned int *) AP1xx_FPGA_REV_ADDR;
+	unsigned int device = (*revision_reg_ptr & AP1xx_TARGET_MASK);
 
 	p[SYSACE_CTRLREG0] = 0x0;
 
 	/* add platform and device to banner */
-	switch (get_device ()) {
+	switch (device) {
 	case AP1xx_AP107_TARGET:
 		puts (AP1xx_AP107_TARGET_STR);
 		break;
@@ -115,17 +117,19 @@ int checkboard (void)
 
 	puts ("Serial#: ");
 
-	if (!s) {
+	if (l < 0) {
 		printf ("### No HW ID - assuming AMIRIX");
 	} else {
-		for (e = s; *e; ++e) {
-			if (*e == ' ')
+		int i;
+
+		for (i = 0; i < l; ++i) {
+			if (buf[i] == ' ') {
+				buf[i] = '\0';
 				break;
+			}
 		}
 
-		for (; s < e; ++s) {
-			putc (*s);
-		}
+		puts(buf);
 	}
 
 	putc ('\n');
@@ -136,9 +140,11 @@ int checkboard (void)
 
 phys_size_t initdram (int board_type)
 {
-	char *s = getenv ("dramsize");
+	char buf[64];
+	int i = getenv_f("dramsize", buf, sizeof(buf));
 
-	if (s != NULL) {
+	if (i > 0) {
+		char *s = buf;
 		if ((s[0] == '0') && ((s[1] == 'x') || (s[1] == 'X'))) {
 			s += 2;
 		}
@@ -154,13 +160,6 @@ unsigned int get_platform (void)
 	unsigned int *revision_reg_ptr = (unsigned int *) AP1xx_FPGA_REV_ADDR;
 
 	return (*revision_reg_ptr & AP1xx_PLATFORM_MASK);
-}
-
-unsigned int get_device (void)
-{
-	unsigned int *revision_reg_ptr = (unsigned int *) AP1xx_FPGA_REV_ADDR;
-
-	return (*revision_reg_ptr & AP1xx_TARGET_MASK);
 }
 
 #if 0				/* loadace is not working; it appears to be a hardware issue with the system ace. */

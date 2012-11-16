@@ -50,6 +50,7 @@
 #define CONFIG_MOUSSE       1
 
 #define	CONFIG_SYS_TEXT_BASE	0xFFF00000
+#define	CONFIG_SYS_LDSCRIPT	"board/mousse/u-boot.lds"
 
 #define CONFIG_SYS_ADDR_MAP_B      1
 
@@ -138,8 +139,6 @@
 #define FLASH_BASE1_PRELIM  0xFFE10000  /* AMD 29LV160DB
 					   1MB - 64K FLASH0 SEG =960K
 					   (size=0xf0000)*/
-
-#define CONFIG_SYS_BAUDRATE_TABLE  { 9600, 19200, 38400, 57600, 115200 }
 
 /*
  * NS16550 Configuration
@@ -333,7 +332,6 @@
 #define CONFIG_PCI			/* include pci support			*/
 #undef CONFIG_PCI_PNP
 
-#define CONFIG_NET_MULTI		/* Multi ethernet cards support		*/
 
 #define CONFIG_TULIP
 

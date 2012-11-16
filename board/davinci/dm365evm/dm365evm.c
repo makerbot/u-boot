@@ -22,9 +22,9 @@
 #include <asm/arch/hardware.h>
 #include <asm/arch/emif_defs.h>
 #include <asm/arch/nand_defs.h>
-#include <asm/arch/gpio_defs.h>
+#include <asm/arch/gpio.h>
 #include <netdev.h>
-#include "../common/misc.h"
+#include <asm/arch/davinci_misc.h>
 #ifdef CONFIG_DAVINCI_MMC
 #include <mmc.h>
 #include <asm/arch/sdmmc_defs.h>
@@ -107,22 +107,21 @@ int board_nand_init(struct nand_chip *nand)
 #endif
 
 #ifdef CONFIG_DAVINCI_MMC
-
 static struct davinci_mmc mmc_sd0 = {
-	.reg_base = (struct davinci_mmc_regs *)DAVINCI_MMC_SD0_BASE,
-	.input_clk = 121500000,
-	.host_caps = MMC_MODE_4BIT,
-	.voltages = MMC_VDD_32_33 | MMC_VDD_33_34,
-	.version = MMC_CTLR_VERSION_2,
+	.reg_base	= (struct davinci_mmc_regs *)DAVINCI_MMC_SD0_BASE,
+	.input_clk	= 121500000,
+	.host_caps	= MMC_MODE_4BIT,
+	.voltages	= MMC_VDD_32_33 | MMC_VDD_33_34,
+	.version	= MMC_CTLR_VERSION_2,
 };
 
 #ifdef CONFIG_DAVINCI_MMC_SD1
 static struct davinci_mmc mmc_sd1 = {
-	.reg_base = (struct davinci_mmc_regs *)DAVINCI_MMC_SD1_BASE,
-	.input_clk = 121500000,
-	.host_caps = MMC_MODE_4BIT,
-	.voltages = MMC_VDD_32_33 | MMC_VDD_33_34,
-	.version = MMC_CTLR_VERSION_2,
+	.reg_base	= (struct davinci_mmc_regs *)DAVINCI_MMC_SD1_BASE,
+	.input_clk	= 121500000,
+	.host_caps	= MMC_MODE_4BIT,
+	.voltages	= MMC_VDD_32_33 | MMC_VDD_33_34,
+	.version	= MMC_CTLR_VERSION_2,
 };
 #endif
 
@@ -150,5 +149,4 @@ int board_mmc_init(bd_t *bis)
 
 	return err;
 }
-
 #endif

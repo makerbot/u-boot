@@ -65,7 +65,8 @@
 	.endm
 
 .globl _start
-_start: b	reset
+_start:
+	ldr	pc, _reset
 	ldr	pc, _undefined_instruction
 	ldr	pc, _software_interrupt
 	ldr	pc, _prefetch_abort
@@ -74,6 +75,7 @@ _start: b	reset
 	ldr	pc, _irq
 	ldr	pc, _fiq
 
+_reset:                 .word reset
 _undefined_instruction: .word undefined_instruction
 _software_interrupt:	.word software_interrupt
 _prefetch_abort:	.word prefetch_abort
@@ -110,6 +112,10 @@ _bss_start_ofs:
 
 .globl _bss_end_ofs
 _bss_end_ofs:
+	.word __bss_end__ - _start
+
+.globl _end_ofs
+_end_ofs:
 	.word _end - _start
 
 #ifdef CONFIG_USE_IRQ
@@ -163,12 +169,6 @@ reset:
 	str     r1, [r2]
 
 	/* make sure flash is visible at 0 */
-#if 0
-	ldr	r2, =IXP425_EXP_CFG0
-	ldr     r1, [r2]
-	orr     r1, r1, #0x80000000
-	str     r1, [r2]
-#endif
 	mov	r1, #CONFIG_SYS_SDR_CONFIG
 	ldr     r2, =IXP425_SDR_CONFIG
 	str     r1, [r2]
@@ -212,19 +212,6 @@ reset:
 	str	r1, [r4]
 	DELAY_FOR 0x4000, r0
 
-	/* copy */
-	mov     r0, #0
-	mov     r4, r0
-	add     r2, r0, #CONFIG_SYS_MONITOR_LEN
-	mov     r1, #0x10000000
-	mov     r5, r1
-
-    30:
-	ldr     r3, [r0], #4
-	str     r3, [r1], #4
-	cmp     r0, r2
-	bne     30b
-
 	/* invalidate I & D caches & BTB */
 	mcr	p15, 0, r0, c7, c7, 0
 	CPWAIT	r0
@@ -237,18 +224,11 @@ reset:
 	mcr	p15, 0, r0, c7, c10, 4
 	CPWAIT	r0
 
-	/* move flash to 0x50000000 */
+	/* remove flash mirror at 0x00000000 */
 	ldr	r2, =IXP425_EXP_CFG0
 	ldr     r1, [r2]
 	bic     r1, r1, #0x80000000
 	str     r1, [r2]
-
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
 
 	/* invalidate I & Data TLB */
 	mcr	p15, 0, r0, c8, c7, 0
@@ -265,7 +245,7 @@ reset:
 	orr	r0,r0,#0x13
 	msr	cpsr,r0
 
-/* Set stackpointer in internal RAM to call board_init_f */
+/* Set initial stackpointer in SDRAM to call board_init_f */
 call_board_init_f:
 	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
 	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
@@ -293,9 +273,9 @@ stack_setup:
 
 	adr	r0, _start
 	cmp	r0, r6
+	moveq	r9, #0		/* no relocation. relocation offset(r9) = 0 */
 	beq	clear_bss		/* skip relocation */
 	mov	r1, r6			/* r1 <- scratch for copy_loop */
-	ldr	r2, _TEXT_BASE
 	ldr	r3, _bss_start_ofs
 	add	r2, r0, r3		/* r2 <- source end address	    */
 
@@ -305,7 +285,7 @@ copy_loop:
 	cmp	r0, r2			/* until source end address [r2]    */
 	blo	copy_loop
 
-#ifndef CONFIG_PRELOADER
+#ifndef CONFIG_SPL_BUILD
 	/*
 	 * fix .rel.dyn relocations
 	 */
@@ -347,22 +327,23 @@ fixnext:
 #endif
 
 clear_bss:
-#ifndef CONFIG_PRELOADER
+#ifndef CONFIG_SPL_BUILD
 	ldr	r0, _bss_start_ofs
 	ldr	r1, _bss_end_ofs
-	ldr	r3, _TEXT_BASE		/* Text base */
 	mov	r4, r6			/* reloc addr */
 	add	r0, r0, r4
 	add	r1, r1, r4
 	mov	r2, #0x00000000		/* clear			    */
 
-clbss_l:str	r2, [r0]		/* clear loop...		    */
+clbss_l:cmp	r0, r1			/* clear loop... */
+	bhs	clbss_e			/* if reached end of bss, exit */
+	str	r2, [r0]
 	add	r0, r0, #4
-	cmp	r0, r1
-	bne	clbss_l
+	b	clbss_l
+clbss_e:
 
 	bl coloured_LED_init
-	bl red_LED_on
+	bl red_led_on
 #endif
 
 /*
@@ -573,33 +554,5 @@ reset_cpu:
 	str     r1, [r2]
 	b	reset_endless
 
-
 reset_endless:
-
 	b	reset_endless
-
-#ifdef CONFIG_USE_IRQ
-
-.LC0:		.word	loops_per_jiffy
-
-/*
- * 0 <= r0 <= 2000
- */
-.globl __udelay
-__udelay:
-	mov	r2,     #0x6800
-	orr	r2, r2, #0x00db
-	mul	r0, r2, r0
-	ldr	r2, .LC0
-	ldr	r2, [r2]		@ max = 0x0fffffff
-	mov	r0, r0, lsr #11		@ max = 0x00003fff
-	mov	r2, r2, lsr #11		@ max = 0x0003ffff
-	mul	r0, r2, r0		@ max = 2^32-1
-	movs	r0, r0, lsr #6
-
-delay_loop:
-	subs	r0, r0, #1
-	bne	delay_loop
-	mov	pc, lr
-
-#endif /* CONFIG_USE_IRQ */

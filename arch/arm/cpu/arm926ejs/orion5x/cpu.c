@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Albert ARIBAUD <albert.aribaud@free.fr>
+ * Copyright (C) 2010 Albert ARIBAUD <albert.u.boot@aribaud.net>
  *
  * Based on original Kirkwood support which is
  * (C) Copyright 2009
@@ -28,8 +28,9 @@
 #include <common.h>
 #include <netdev.h>
 #include <asm/cache.h>
+#include <asm/io.h>
 #include <u-boot/md5.h>
-#include <asm/arch/orion5x.h>
+#include <asm/arch/cpu.h>
 #include <hush.h>
 
 #define BUFLEN	16
@@ -291,7 +292,9 @@ int arch_misc_init(void)
 	writel(ORION5X_MPP0_7, ORION5X_MPP_BASE+0x00);
 	writel(ORION5X_MPP8_15, ORION5X_MPP_BASE+0x04);
 	writel(ORION5X_MPP16_23, ORION5X_MPP_BASE+0x50);
+	writel(ORION5X_GPIO_OUT_VALUE, ORION5X_GPIO_BASE+0x00);
 	writel(ORION5X_GPIO_OUT_ENABLE, ORION5X_GPIO_BASE+0x04);
+	writel(ORION5X_GPIO_IN_POLARITY, ORION5X_GPIO_BASE+0x0c);
 
 	/* initialize timer */
 	timer_init_r();

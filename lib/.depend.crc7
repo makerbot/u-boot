@@ -1,0 +1,8 @@
+crc7.o: crc7.c \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/linux/types.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/linux/config.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/linux/posix_types.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/linux/stddef.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/asm/posix_types.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/asm/types.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/linux/crc7.h

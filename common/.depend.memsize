@@ -1,0 +1,9 @@
+memsize.o: memsize.c \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/config.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/config_cmd_defaults.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/config_defaults.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/configs/hawkboard.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/config_cmd_default.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/asm/config.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/config_fallbacks.h \
+  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/config_uncmd_spl.h

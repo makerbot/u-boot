@@ -31,8 +31,8 @@ SECTIONS
 	. = ALIGN(4);
 	.text :
 	{
-		arch/arm/cpu/ixp/start.o(.text)
-		*(.text)
+		arch/arm/cpu/ixp/start.o(.text*)
+		*(.text*)
 	}
 
 	. = ALIGN(4);
@@ -40,7 +40,7 @@ SECTIONS
 
 	. = ALIGN(4);
 	.data : {
-		*(.data)
+		*(.data*)
 	}
 
 	. = ALIGN(4);
@@ -63,11 +63,13 @@ SECTIONS
 		*(.dynsym)
 	}
 
+	_end = .;
+
 	.bss __rel_dyn_start (OVERLAY) : {
 		__bss_start = .;
-		*(.bss)
+		*(.bss*)
 		 . = ALIGN(4);
-		_end = .;
+		__bss_end__ = .;
 	}
 
 	/DISCARD/ : { *(.dynstr*) }

@@ -30,7 +30,9 @@ endif
 LIB	= $(obj)lib$(VENDOR).o
 
 COBJS-$(CONFIG_IO) += miiphybb.o
+COBJS-$(CONFIG_IO64) += miiphybb.o
 COBJS-$(CONFIG_IOCON) += osd.o
+COBJS-$(CONFIG_DLVISION_10G) += osd.o
 
 COBJS   := $(COBJS-y)
 SOBJS   =
@@ -41,12 +43,6 @@ SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(OBJS) $(SOBJS)
 	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
-
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

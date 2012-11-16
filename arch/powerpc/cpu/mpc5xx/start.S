@@ -33,7 +33,6 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc5xx.h>
-#include <timestamp.h>
 #include <version.h>
 
 #define CONFIG_5xx 1		/* needed for Linux kernel header files */
@@ -45,10 +44,6 @@
 #include <linux/config.h>
 #include <asm/processor.h>
 #include <asm/u-boot.h>
-
-#ifndef  CONFIG_IDENT_STRING
-#define  CONFIG_IDENT_STRING ""
-#endif
 
 /* We don't have a MMU.
 */
@@ -70,7 +65,7 @@
 	GOT_ENTRY(transfer_to_handler)
 
 	GOT_ENTRY(__init_end)
-	GOT_ENTRY(_end)
+	GOT_ENTRY(__bss_end__)
 	GOT_ENTRY(__bss_start)
 	END_GOT
 
@@ -82,9 +77,7 @@
 	.long	0x27051956			/* U-Boot Magic Number */
 	.globl	version_string
 version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
-	.ascii CONFIG_IDENT_STRING, "\0"
+	.ascii U_BOOT_VERSION_STRING, "\0"
 
 	. = EXC_OFF_SYS_RESET
 	.globl	_start
@@ -466,7 +459,7 @@ clear_bss:
 	 * Now clear BSS segment
 	 */
 	lwz	r3,GOT(__bss_start)
-	lwz	r4,GOT(_end)
+	lwz	r4,GOT(__bss_end__)
 	cmplw	0, r3, r4
 	beq	6f
 

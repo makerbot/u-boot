@@ -49,7 +49,8 @@
 #endif
 
 /* On a Cameron or on a FO300 board or ...				*/
-#if !defined(CONFIG_CAM5200) && !defined(CONFIG_FO300)
+#if !defined(CONFIG_CAM5200) && !defined(CONFIG_CHARON) \
+	&& !defined(CONFIG_FO300)
 #define CONFIG_STK52XX		1	/* ... on a STK52XX board		*/
 #endif
 
@@ -79,7 +80,7 @@
 							/* switch is open */
 #endif	/* CONFIG_FO300 */
 
-#ifdef CONFIG_STK52XX
+#if defined(CONFIG_CHARON) || defined(CONFIG_STK52XX)
 #define CONFIG_PS2KBD			/* AT-PS/2 Keyboard		*/
 #define CONFIG_PS2MULT			/* .. on PS/2 Multiplexer	*/
 #define CONFIG_PS2SERIAL	6	/* .. on PSC6			*/
@@ -92,7 +93,7 @@
  * 0x40000000 - 0x4fffffff - PCI Memory
  * 0x50000000 - 0x50ffffff - PCI IO Space
  */
-#ifdef CONFIG_STK52XX
+#if defined(CONFIG_CHARON) || defined(CONFIG_STK52XX)
 #define CONFIG_PCI		1
 #define CONFIG_PCI_PNP		1
 /* #define CONFIG_PCI_SCAN_SHOW	1 */
@@ -105,7 +106,6 @@
 #define CONFIG_PCI_IO_PHYS	CONFIG_PCI_IO_BUS
 #define CONFIG_PCI_IO_SIZE	0x01000000
 
-#define CONFIG_NET_MULTI	1
 #define CONFIG_EEPRO100		1
 #define CONFIG_SYS_RX_ETH_BUFFER	8  /* use 8 rx buffer on eepro100  */
 #define CONFIG_NS8382X		1
@@ -140,7 +140,8 @@
 #define CONFIG_ISO_PARTITION
 
 /* USB */
-#if defined(CONFIG_STK52XX) || defined(CONFIG_FO300)
+#if defined(CONFIG_CHARON) || defined(CONFIG_FO300) || \
+    defined(CONFIG_STK52XX)
 #define CONFIG_USB_OHCI_NEW
 #define CONFIG_SYS_OHCI_BE_CONTROLLER
 #define CONFIG_USB_STORAGE
@@ -204,13 +205,15 @@
 #define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
 #endif
 
-#if defined(CONFIG_MINIFAP) || defined(CONFIG_STK52XX) || defined(CONFIG_FO300)
+#if defined(CONFIG_CHARON) || defined(CONFIG_FO300) || \
+	defined(CONFIG_MINIFAP) || defined(CONFIG_STK52XX)
     #define CONFIG_CMD_IDE
     #define CONFIG_CMD_FAT
     #define CONFIG_CMD_EXT2
 #endif
 
-#if defined(CONFIG_STK52XX) || defined(CONFIG_FO300)
+#if defined(CONFIG_CHARON) || defined(CONFIG_FO300) || \
+	defined(CONFIG_STK52XX)
     #define CONFIG_CFG_USB
     #define CONFIG_CFG_FAT
 #endif
@@ -269,6 +272,11 @@
 	"fdt_addr=FC100000\0"						\
 	"kernel_addr=FC140000\0"					\
 	"ramdisk_addr=FC600000\0"
+#elif defined(CONFIG_CHARON)
+#define ENV_FLASH_LAYOUT						\
+	"fdt_addr=FDFC0000\0"						\
+	"kernel_addr=FC0A0000\0"					\
+	"ramdisk_addr=FC200000\0"
 #else	/* !CONFIG_TQM5200_B */
 #define ENV_FLASH_LAYOUT						\
 	"fdt_addr=FC0A0000\0"						\
@@ -291,7 +299,9 @@
 		":${hostname}:${netdev}:off panic=1\0"			\
 	"addcons=setenv bootargs ${bootargs} "				\
 		"console=${console},${baudrate}\0"			\
-	"flash_self_old=sete console ttyS0; run ramargs addip addcons;"	\
+	"addmtd=setenv bootargs ${bootargs} ${mtdparts}\0"		\
+	"flash_self_old=sete console ttyS0; "				\
+		"run ramargs addip addcons addmtd; "			\
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
 	"flash_self=run ramargs addip addcons;"				\
 		"bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
@@ -303,7 +313,7 @@
 		"sete console ttyS0; run nfsargs addip addcons;bootm\0"	\
 	"net_nfs=tftp ${kernel_addr_r} ${bootfile}; "			\
 		"tftp ${fdt_addr_r} ${fdt_file}; "			\
-		"run nfsargs addip addcons; "				\
+		"run nfsargs addip addcons addmtd; "			\
 		"bootm ${kernel_addr_r} - ${fdt_addr_r}\0"		\
 	CUSTOM_ENV_SETTINGS						\
 	"load=tftp 200000 ${u-boot}\0"					\
@@ -418,12 +428,12 @@
 /* Dynamic MTD partition support */
 #define CONFIG_CMD_MTDPARTS
 #define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
-#define MTDIDS_DEFAULT		"nor0=TQM5200-0"
+#define MTDIDS_DEFAULT		"nor0=fc000000.flash"
 
-#ifdef CONFIG_STK52XX
+#if defined(CONFIG_STK52XX)
 # if defined(CONFIG_TQM5200_B)
 #  if defined(CONFIG_SYS_LOWBOOT)
-#   define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:1m(firmware),"	\
+#   define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:1m(firmware),"	\
 						"256k(dtb),"		\
 						"2304k(kernel),"	\
 						"2560k(small-fs),"	\
@@ -431,7 +441,7 @@
 						"8m(misc),"		\
 						"16m(big-fs)"
 #  else	/* highboot */
-#   define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:2560k(kernel),"	\
+#   define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:2560k(kernel),"\
 						"3584k(small-fs),"	\
 						"2m(initrd),"		\
 						"8m(misc),"		\
@@ -439,7 +449,7 @@
 						"1m(firmware)"
 #  endif /* CONFIG_SYS_LOWBOOT */
 # else	/* !CONFIG_TQM5200_B */
-#   define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:640k(firmware),"	\
+#   define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:640k(firmware),"\
 						"128k(dtb),"		\
 						"2304k(kernel),"	\
 						"2m(initrd),"		\
@@ -448,12 +458,19 @@
 						"15m(big-fs)"
 # endif /* CONFIG_TQM5200_B */
 #elif defined (CONFIG_CAM5200)
-#   define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:768k(firmware),"	\
+#   define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:768k(firmware),"\
 						"1792k(kernel),"	\
 						"5632k(rootfs),"	\
 						"24m(home)"
+#elif defined (CONFIG_CHARON)
+#   define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:640k(firmware),"\
+						"1408k(kernel),"	\
+						"2m(initrd),"		\
+						"4m(small-fs),"		\
+						"24320k(big-fs),"	\
+						"256k(dts)"
 #elif defined (CONFIG_FO300)
-#   define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:640k(firmware),"	\
+#   define MTDPARTS_DEFAULT	"mtdparts=fc000000.flash:640k(firmware),"\
 						"1408k(kernel),"	\
 						"2m(initrd),"		\
 						"4m(small-fs),"		\
@@ -566,6 +583,7 @@
  * use PSC1: Bits 29-31 (mask: 0x00000007):
  *	 100 -> UART (on all boards).
  */
+#if !defined(CONFIG_SYS_GPS_PORT_CONFIG)
 #if defined (CONFIG_MINIFAP)
 # define CONFIG_SYS_GPS_PORT_CONFIG	0x91000004
 #elif defined (CONFIG_STK52XX)
@@ -584,6 +602,7 @@
 # define CONFIG_SYS_GPS_PORT_CONFIG	0x8050A444
 #else  /* TMQ5200 Inbetriebnahme-Board */
 # define CONFIG_SYS_GPS_PORT_CONFIG	0x81000004
+#endif
 #endif
 
 /*
@@ -606,7 +625,6 @@
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
 #define	CONFIG_SYS_HUSH_PARSER		1	/* use "hush" command parser	*/
-#define	CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 
 #define CONFIG_SYS_CACHELINE_SIZE	32	/* For MPC5xxx CPUs */
 #if defined(CONFIG_CMD_KGDB)

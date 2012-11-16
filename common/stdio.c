@@ -105,7 +105,7 @@ struct list_head* stdio_get_list(void)
 	return &(devs.list);
 }
 
-struct stdio_dev* stdio_get_by_name(char* name)
+struct stdio_dev* stdio_get_by_name(const char *name)
 {
 	struct list_head *pos;
 	struct stdio_dev *dev;
@@ -155,12 +155,12 @@ int stdio_register (struct stdio_dev * dev)
  * returns 0 if success, -1 if device is assigned and 1 if devname not found
  */
 #ifdef	CONFIG_SYS_STDIO_DEREGISTER
-int stdio_deregister(char *devname)
+int stdio_deregister(const char *devname)
 {
 	int l;
 	struct list_head *pos;
 	struct stdio_dev *dev;
-	char temp_names[3][8];
+	char temp_names[3][16];
 
 	dev = stdio_get_by_name(devname);
 
@@ -174,7 +174,7 @@ int stdio_deregister(char *devname)
 		}
 		memcpy (&temp_names[l][0],
 			stdio_devices[l]->name,
-			sizeof(stdio_devices[l]->name));
+			sizeof(temp_names[l]));
 	}
 
 	list_del(&(dev->list));

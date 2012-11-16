@@ -106,31 +106,33 @@ const uint sdram_table[] =
 
 int checkboard (void)
 {
-	char *s = getenv ("serial#");
+	char buf[64];
+	int i;
+	int l = getenv_f("serial#", buf, sizeof(buf));
 
 	puts ("Board: ");
 
-	if (!s || strncmp (s, "TQM8", 4)) {
+	if (l < 0 || strncmp(buf, "TQM8", 4)) {
 		puts ("### No HW ID - assuming TQM8xxL\n");
 		return (0);
 	}
 
-	if ((*(s + 6) == 'L')) {	/* a TQM8xxL type */
+	if ((buf[6] == 'L')) {	/* a TQM8xxL type */
 		gd->board_type = 'L';
 	}
 
-	if ((*(s + 6) == 'M')) {	/* a TQM8xxM type */
+	if ((buf[6] == 'M')) {	/* a TQM8xxM type */
 		gd->board_type = 'M';
 	}
 
-	if ((*(s + 6) == 'D')) {	/* a TQM885D type */
+	if ((buf[6] == 'D')) {	/* a TQM885D type */
 		gd->board_type = 'D';
 	}
 
-	for (; *s; ++s) {
-		if (*s == ' ')
+	for (i = 0; i < l; ++i) {
+		if (buf[i] == ' ')
 			break;
-		putc (*s);
+		putc (buf[i]);
 	}
 #ifdef CONFIG_VIRTLAB2
 	puts (" (Virtlab2)");
@@ -722,15 +724,15 @@ int last_stage_init(void)
 		return 0;
 
 	for (i = 0; i < 2; i++) {
-		ret = miiphy_read("FEC", phy[i], PHY_BMCR, &reg);
+		ret = miiphy_read("FEC", phy[i], MII_BMCR, &reg);
 		if (ret) {
 			printf("Cannot read BMCR on PHY %d\n", phy[i]);
 			return 0;
 		}
 		/* Auto-negotiation off, hard set full duplex, 100Mbps */
 		ret = miiphy_write("FEC", phy[i],
-				   PHY_BMCR, (reg | PHY_BMCR_100MB |
-					      PHY_BMCR_DPLX) & ~PHY_BMCR_AUTON);
+				   MII_BMCR, (reg | BMCR_SPEED100 |
+					      BMCR_FULLDPLX) & ~BMCR_ANENABLE);
 		if (ret) {
 			printf("Cannot write BMCR on PHY %d\n", phy[i]);
 			return 0;

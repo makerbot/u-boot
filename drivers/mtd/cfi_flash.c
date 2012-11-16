@@ -40,6 +40,7 @@
 #include <asm/byteorder.h>
 #include <environment.h>
 #include <mtd/cfi_flash.h>
+#include <watchdog.h>
 
 /*
  * This file implements a Common Flash Interface (CFI) driver for
@@ -63,7 +64,11 @@
  */
 
 static uint flash_offset_cfi[2] = { FLASH_OFFSET_CFI, FLASH_OFFSET_CFI_ALT };
+#ifdef CONFIG_FLASH_CFI_MTD
 static uint flash_verbose = 1;
+#else
+#define flash_verbose 1
+#endif
 
 flash_info_t flash_info[CFI_MAX_FLASH_BANKS];	/* FLASH chips info */
 
@@ -73,6 +78,20 @@ flash_info_t flash_info[CFI_MAX_FLASH_BANKS];	/* FLASH chips info */
 #ifndef CONFIG_SYS_FLASH_CFI_WIDTH
 #define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_8BIT
 #endif
+
+/*
+ * 0xffff is an undefined value for the configuration register. When
+ * this value is returned, the configuration register shall not be
+ * written at all (default mode).
+ */
+static u16 cfi_flash_config_reg(int i)
+{
+#ifdef CONFIG_SYS_CFI_FLASH_CONFIG_REGS
+	return ((u16 [])CONFIG_SYS_CFI_FLASH_CONFIG_REGS)[i];
+#else
+	return 0xffff;
+#endif
+}
 
 #if defined(CONFIG_SYS_MAX_FLASH_BANKS_DETECT)
 int cfi_flash_num_flash_banks = CONFIG_SYS_MAX_FLASH_BANKS_DETECT;
@@ -555,14 +574,18 @@ static int flash_status_check (flash_info_t * info, flash_sect_t sector,
 #endif
 
 	/* Wait for command completion */
+#ifdef CONFIG_SYS_LOW_RES_TIMER
 	reset_timer();
+#endif
 	start = get_timer (0);
+	WATCHDOG_RESET();
 	while (flash_is_busy (info, sector)) {
 		if (get_timer (start) > tout) {
 			printf ("Flash %s timeout at address %lx data %lx\n",
 				prompt, info->start[sector],
 				flash_read_long (info, sector, 0));
 			flash_write_cmd (info, sector, 0, info->cmd_reset);
+			udelay(1);
 			return ERR_TIMOUT;
 		}
 		udelay (1);		/* also triggers watchdog */
@@ -610,6 +633,7 @@ static int flash_full_status_check (flash_info_t * info, flash_sect_t sector,
 				puts ("Vpp Low Error.\n");
 		}
 		flash_write_cmd (info, sector, 0, info->cmd_reset);
+		udelay(1);
 		break;
 	default:
 		break;
@@ -642,8 +666,11 @@ static int flash_status_poll(flash_info_t *info, void *src, void *dst,
 #endif
 
 	/* Wait for command completion */
+#ifdef CONFIG_SYS_LOW_RES_TIMER
 	reset_timer();
+#endif
 	start = get_timer(0);
+	WATCHDOG_RESET();
 	while (1) {
 		switch (info->portwidth) {
 		case FLASH_CFI_8BIT:
@@ -726,7 +753,11 @@ static void flash_add_byte (flash_info_t * info, cfiword_t * cword, uchar c)
 static flash_sect_t find_sector (flash_info_t * info, ulong addr)
 {
 	static flash_sect_t saved_sector = 0; /* previously found sector */
+	static flash_info_t *saved_info = 0; /* previously used flash bank */
 	flash_sect_t sector = saved_sector;
+
+	if ((info != saved_info) || (sector >= info->sector_count))
+		sector = 0;
 
 	while ((info->start[sector] < addr)
 			&& (sector < info->sector_count - 1))
@@ -739,6 +770,7 @@ static flash_sect_t find_sector (flash_info_t * info, ulong addr)
 		sector--;
 
 	saved_sector = sector;
+	saved_info = info;
 	return sector;
 }
 
@@ -841,7 +873,7 @@ static int flash_write_cfibuffer (flash_info_t * info, ulong dest, uchar * cp,
 	void *src = cp;
 	void *dst = (void *)dest;
 	void *dst2 = dst;
-	int flag = 0;
+	int flag = 1;
 	uint offset = 0;
 	unsigned int shift;
 	uchar write_cmd;
@@ -866,7 +898,7 @@ static int flash_write_cfibuffer (flash_info_t * info, ulong dest, uchar * cp,
 
 	cnt = len >> shift;
 
-	while ((cnt-- > 0) && (flag == 0)) {
+	while ((cnt-- > 0) && (flag == 1)) {
 		switch (info->portwidth) {
 		case FLASH_CFI_8BIT:
 			flag = ((flash_read8(dst2) & flash_read8(src)) ==
@@ -1045,7 +1077,38 @@ int flash_erase (flash_info_t * info, int s_first, int s_last)
 
 
 	for (sect = s_first; sect <= s_last; sect++) {
+		if (ctrlc()) {
+			printf("\n");
+			return 1;
+		}
+
 		if (info->protect[sect] == 0) { /* not protected */
+#ifdef CONFIG_SYS_FLASH_CHECK_BLANK_BEFORE_ERASE
+			int k;
+			int size;
+			int erased;
+			u32 *flash;
+
+			/*
+			 * Check if whole sector is erased
+			 */
+			size = flash_sector_size(info, sect);
+			erased = 1;
+			flash = (u32 *)info->start[sect];
+			/* divide by 4 for longword access */
+			size = size >> 2;
+			for (k = 0; k < size; k++) {
+				if (flash_read32(flash++) != 0xffffffff) {
+					erased = 0;
+					break;
+				}
+			}
+			if (erased) {
+				if (flash_verbose)
+					putc(',');
+				continue;
+			}
+#endif
 			switch (info->vendor) {
 			case CFI_CMDSET_INTEL_PROG_REGIONS:
 			case CFI_CMDSET_INTEL_STANDARD:
@@ -1112,18 +1175,18 @@ static int sector_erased(flash_info_t *info, int i)
 {
 	int k;
 	int size;
-	volatile unsigned long *flash;
+	u32 *flash;
 
 	/*
 	 * Check if whole sector is erased
 	 */
 	size = flash_sector_size(info, i);
-	flash = (volatile unsigned long *) info->start[i];
+	flash = (u32 *)info->start[i];
 	/* divide by 4 for longword access */
 	size = size >> 2;
 
 	for (k = 0; k < size; k++) {
-		if (*flash++ != 0xffffffff)
+		if (flash_read32(flash++) != 0xffffffff)
 			return 0;	/* not erased */
 	}
 
@@ -1140,7 +1203,7 @@ void flash_print_info (flash_info_t * info)
 		return;
 	}
 
-	printf ("%s FLASH (%d x %d)",
+	printf ("%s flash (%d x %d)",
 		info->name,
 		(info->portwidth << 3), (info->chipwidth << 3));
 	if (info->size < 1024*1024)
@@ -1179,8 +1242,9 @@ void flash_print_info (flash_info_t * info)
 		info->manufacturer_id);
 	printf (info->chipwidth == FLASH_CFI_16BIT ? "%04X" : "%02X",
 		info->device_id);
-	if (info->device_id == 0x7E) {
-		printf("%04X", info->device_id2);
+	if ((info->device_id & 0xff) == 0x7E) {
+		printf(info->chipwidth == FLASH_CFI_16BIT ? "%04X" : "%02X",
+		info->device_id2);
 	}
 	printf ("\n  Erase timeout: %ld ms, write timeout: %ld ms\n",
 		info->erase_blk_tout,
@@ -1320,6 +1384,9 @@ int write_buff (flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 		src += i;
 		cnt -= i;
 		FLASH_SHOW_PROGRESS(scale, dots, digit, i);
+		/* Only check every once in a while */
+		if ((cnt & 0xFFFF) < buffered_size && ctrlc())
+			return ERR_ABORTED;
 	}
 #else
 	while (cnt >= info->portwidth) {
@@ -1332,6 +1399,9 @@ int write_buff (flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 		wp += info->portwidth;
 		cnt -= info->portwidth;
 		FLASH_SHOW_PROGRESS(scale, dots, digit, info->portwidth);
+		/* Only check every once in a while */
+		if ((cnt & 0xFFFF) < info->portwidth && ctrlc())
+			return ERR_ABORTED;
 	}
 #endif /* CONFIG_SYS_FLASH_USE_BUFFER_WRITE */
 
@@ -1358,6 +1428,40 @@ int write_buff (flash_info_t * info, uchar * src, ulong addr, ulong cnt)
  */
 #ifdef CONFIG_SYS_FLASH_PROTECTION
 
+static int cfi_protect_bugfix(flash_info_t *info, long sector, int prot)
+{
+	if ((info->manufacturer_id == (uchar)INTEL_MANUFACT) &&
+		(info->device_id == NUMONYX_256MBIT)) {
+		/*
+		 * see errata called
+		 * "Numonyx Axcell P33/P30 Specification Update" :)
+		 */
+		flash_write_cmd(info, sector, 0, FLASH_CMD_READ_ID);
+		if (!flash_isequal(info, sector, FLASH_OFFSET_PROTECT,
+				   prot)) {
+			/*
+			 * cmd must come before FLASH_CMD_PROTECT + 20us
+			 * Disable interrupts which might cause a timeout here.
+			 */
+			int flag = disable_interrupts();
+			unsigned short cmd;
+
+			if (prot)
+				cmd = FLASH_CMD_PROTECT_SET;
+			else
+				cmd = FLASH_CMD_PROTECT_CLEAR;
+				flash_write_cmd(info, sector, 0,
+					  FLASH_CMD_PROTECT);
+			flash_write_cmd(info, sector, 0, cmd);
+			/* re-enable interrupts if necessary */
+			if (flag)
+				enable_interrupts();
+		}
+		return 1;
+	}
+	return 0;
+}
+
 int flash_real_protect (flash_info_t * info, long sector, int prot)
 {
 	int retcode = 0;
@@ -1366,31 +1470,18 @@ int flash_real_protect (flash_info_t * info, long sector, int prot)
 		case CFI_CMDSET_INTEL_PROG_REGIONS:
 		case CFI_CMDSET_INTEL_STANDARD:
 		case CFI_CMDSET_INTEL_EXTENDED:
-			/*
-			 * see errata called
-			 * "Numonyx Axcell P33/P30 Specification Update" :)
-			 */
-			flash_write_cmd (info, sector, 0, FLASH_CMD_READ_ID);
-			if (!flash_isequal (info, sector, FLASH_OFFSET_PROTECT,
-					    prot)) {
-				/*
-				 * cmd must come before FLASH_CMD_PROTECT + 20us
-				 * Disable interrupts which might cause a timeout here.
-				 */
-				int flag = disable_interrupts ();
-				unsigned short cmd;
-
+			if (!cfi_protect_bugfix(info, sector, prot)) {
+				flash_write_cmd(info, sector, 0,
+					 FLASH_CMD_CLEAR_STATUS);
+				flash_write_cmd(info, sector, 0,
+					FLASH_CMD_PROTECT);
 				if (prot)
-					cmd = FLASH_CMD_PROTECT_SET;
+					flash_write_cmd(info, sector, 0,
+						FLASH_CMD_PROTECT_SET);
 				else
-					cmd = FLASH_CMD_PROTECT_CLEAR;
+					flash_write_cmd(info, sector, 0,
+						FLASH_CMD_PROTECT_CLEAR);
 
-				flash_write_cmd (info, sector, 0,
-						  FLASH_CMD_PROTECT);
-				flash_write_cmd (info, sector, 0, cmd);
-				/* re-enable interrupts if necessary */
-				if (flag)
-					enable_interrupts ();
 			}
 			break;
 		case CFI_CMDSET_AMD_EXTENDED:
@@ -1414,6 +1505,47 @@ int flash_real_protect (flash_info_t * info, long sector, int prot)
 							0, ATM_CMD_UNLOCK_SECT);
 				}
 			}
+			if (info->manufacturer_id == (uchar)AMD_MANUFACT) {
+				int flag = disable_interrupts();
+				int lock_flag;
+
+				flash_unlock_seq(info, 0);
+				flash_write_cmd(info, 0, info->addr_unlock1,
+						AMD_CMD_SET_PPB_ENTRY);
+				lock_flag = flash_isset(info, sector, 0, 0x01);
+				if (prot) {
+					if (lock_flag) {
+						flash_write_cmd(info, sector, 0,
+							AMD_CMD_PPB_LOCK_BC1);
+						flash_write_cmd(info, sector, 0,
+							AMD_CMD_PPB_LOCK_BC2);
+					}
+					debug("sector %ld %slocked\n", sector,
+						lock_flag ? "" : "already ");
+				} else {
+					if (!lock_flag) {
+						debug("unlock %ld\n", sector);
+						flash_write_cmd(info, 0, 0,
+							AMD_CMD_PPB_UNLOCK_BC1);
+						flash_write_cmd(info, 0, 0,
+							AMD_CMD_PPB_UNLOCK_BC2);
+					}
+					debug("sector %ld %sunlocked\n", sector,
+						!lock_flag ? "" : "already ");
+				}
+				if (flag)
+					enable_interrupts();
+
+				if (flash_status_check(info, sector,
+						info->erase_blk_tout,
+						prot ? "protect" : "unprotect"))
+					printf("status check error\n");
+
+				flash_write_cmd(info, 0, 0,
+						AMD_CMD_SET_PPB_EXIT_BC1);
+				flash_write_cmd(info, 0, 0,
+						AMD_CMD_SET_PPB_EXIT_BC2);
+			}
 			break;
 #ifdef CONFIG_FLASH_CFI_LEGACY
 		case CFI_CMDSET_AMD_LEGACY:
@@ -1426,6 +1558,11 @@ int flash_real_protect (flash_info_t * info, long sector, int prot)
 #endif
 	};
 
+	/*
+	 * Flash needs to be in status register read mode for
+	 * flash_full_status_check() to work correctly
+	 */
+	flash_write_cmd(info, sector, 0, FLASH_CMD_READ_STATUS);
 	if ((retcode =
 	     flash_full_status_check (info, sector, info->erase_blk_tout,
 				      prot ? "protect" : "unprotect")) == 0) {
@@ -1462,6 +1599,7 @@ void flash_read_user_serial (flash_info_t * info, void *buffer, int offset,
 	flash_write_cmd (info, 0, 0, FLASH_CMD_READ_ID);
 	memcpy (dst, src + offset, len);
 	flash_write_cmd (info, 0, 0, info->cmd_reset);
+	udelay(1);
 	flash_unmap(info, 0, FLASH_OFFSET_USER_PROTECTION, src);
 }
 
@@ -1477,6 +1615,7 @@ void flash_read_factory_serial (flash_info_t * info, void *buffer, int offset,
 	flash_write_cmd (info, 0, 0, FLASH_CMD_READ_ID);
 	memcpy (buffer, src + offset, len);
 	flash_write_cmd (info, 0, 0, info->cmd_reset);
+	udelay(1);
 	flash_unmap(info, 0, FLASH_OFFSET_INTEL_PROTECTION, src);
 }
 
@@ -1508,6 +1647,7 @@ static void cfi_reverse_geometry(struct cfi_qry *qry)
 static void cmdset_intel_read_jedec_ids(flash_info_t *info)
 {
 	flash_write_cmd(info, 0, 0, FLASH_CMD_RESET);
+	udelay(1);
 	flash_write_cmd(info, 0, 0, FLASH_CMD_READ_ID);
 	udelay(1000); /* some flash are slow to respond */
 	info->manufacturer_id = flash_read_uchar (info,
@@ -1571,11 +1711,20 @@ static void cmdset_amd_read_jedec_ids(flash_info_t *info)
 	case FLASH_CFI_16BIT:
 		info->device_id = flash_read_word (info,
 						FLASH_OFFSET_DEVICE_ID);
+		if ((info->device_id & 0xff) == 0x7E) {
+			/* AMD 3-byte (expanded) device ids */
+			info->device_id2 = flash_read_uchar (info,
+						FLASH_OFFSET_DEVICE_ID2);
+			info->device_id2 <<= 8;
+			info->device_id2 |= flash_read_uchar (info,
+						FLASH_OFFSET_DEVICE_ID3);
+		}
 		break;
 	default:
 		break;
 	}
 	flash_write_cmd(info, 0, 0, AMD_CMD_RESET);
+	udelay(1);
 }
 
 static int cmdset_amd_init(flash_info_t *info, struct cfi_qry *qry)
@@ -1584,6 +1733,17 @@ static int cmdset_amd_init(flash_info_t *info, struct cfi_qry *qry)
 
 	cmdset_amd_read_jedec_ids(info);
 	flash_write_cmd(info, 0, info->cfi_offset, FLASH_CMD_CFI);
+
+#ifdef CONFIG_SYS_FLASH_PROTECTION
+	if (info->ext_addr && info->manufacturer_id == (uchar)AMD_MANUFACT) {
+		ushort spus;
+
+		/* read sector protect/unprotect scheme */
+		spus = flash_read_uchar(info, info->ext_addr + 9);
+		if (spus == 0x8)
+			info->legacy_unlock = 1;
+	}
+#endif
 
 	return 0;
 }
@@ -1702,6 +1862,7 @@ void __flash_cmd_reset(flash_info_t *info)
 	 * that AMD flash roms ignore the Intel command.
 	 */
 	flash_write_cmd(info, 0, 0, AMD_CMD_RESET);
+	udelay(1);
 	flash_write_cmd(info, 0, 0, FLASH_CMD_RESET);
 }
 void flash_cmd_reset(flash_info_t *info)
@@ -1824,11 +1985,16 @@ static void flash_fixup_stm(flash_info_t *info, struct cfi_qry *qry)
 	if (qry->num_erase_regions > 1) {
 		/* reverse geometry if top boot part */
 		if (info->cfi_version < 0x3131) {
-			/* CFI < 1.1, guess by device id (M29W320{DT,ET} only) */
-			if (info->device_id == 0x22CA ||
-			    info->device_id == 0x2256) {
+			/* CFI < 1.1, guess by device id */
+			if (info->device_id == 0x22CA || /* M29W320DT */
+			    info->device_id == 0x2256 || /* M29W320ET */
+			    info->device_id == 0x22D7) { /* M29W800DT */
 				cfi_reverse_geometry(qry);
 			}
+		} else if (flash_read_uchar(info, info->ext_addr + 0xf) == 3) {
+			/* CFI >= 1.1, deduct from top/bottom flag */
+			/* note: ext_addr is valid since cfi_version > 0 */
+			cfi_reverse_geometry(qry);
 		}
 	}
 }
@@ -1901,7 +2067,8 @@ ulong flash_get_size (phys_addr_t base, int banknum)
 
 		/* Do manufacturer-specific fixups */
 		switch (info->manufacturer_id) {
-		case 0x0001:
+		case 0x0001: /* AMD */
+		case 0x0037: /* AMIC */
 			flash_fixup_amd(info, &qry);
 			break;
 		case 0x001f:
@@ -1975,6 +2142,13 @@ ulong flash_get_size (phys_addr_t base, int banknum)
 				case CFI_CMDSET_INTEL_PROG_REGIONS:
 				case CFI_CMDSET_INTEL_EXTENDED:
 				case CFI_CMDSET_INTEL_STANDARD:
+					/*
+					 * Set flash to read-id mode. Otherwise
+					 * reading protected status is not
+					 * guaranteed.
+					 */
+					flash_write_cmd(info, sect_cnt, 0,
+							FLASH_CMD_READ_ID);
 					info->protect[sect_cnt] =
 						flash_isset (info, sect_cnt,
 							     FLASH_OFFSET_PROTECT,
@@ -2016,23 +2190,92 @@ ulong flash_get_size (phys_addr_t base, int banknum)
 	return (info->size);
 }
 
+#ifdef CONFIG_FLASH_CFI_MTD
 void flash_set_verbose(uint v)
 {
 	flash_verbose = v;
 }
+#endif
+
+static void cfi_flash_set_config_reg(u32 base, u16 val)
+{
+#ifdef CONFIG_SYS_CFI_FLASH_CONFIG_REGS
+	/*
+	 * Only set this config register if really defined
+	 * to a valid value (0xffff is invalid)
+	 */
+	if (val == 0xffff)
+		return;
+
+	/*
+	 * Set configuration register. Data is "encrypted" in the 16 lower
+	 * address bits.
+	 */
+	flash_write16(FLASH_CMD_SETUP, (void *)(base + (val << 1)));
+	flash_write16(FLASH_CMD_SET_CR_CONFIRM, (void *)(base + (val << 1)));
+
+	/*
+	 * Finally issue reset-command to bring device back to
+	 * read-array mode
+	 */
+	flash_write16(FLASH_CMD_RESET, (void *)base);
+#endif
+}
 
 /*-----------------------------------------------------------------------
  */
-unsigned long flash_init (void)
+
+void flash_protect_default(void)
 {
-	unsigned long size = 0;
-	int i;
 #if defined(CONFIG_SYS_FLASH_AUTOPROTECT_LIST)
+	int i;
 	struct apl_s {
 		ulong start;
 		ulong size;
 	} apl[] = CONFIG_SYS_FLASH_AUTOPROTECT_LIST;
 #endif
+
+	/* Monitor protection ON by default */
+#if (CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE) && \
+	(!defined(CONFIG_MONITOR_IS_IN_RAM))
+	flash_protect(FLAG_PROTECT_SET,
+		       CONFIG_SYS_MONITOR_BASE,
+		       CONFIG_SYS_MONITOR_BASE + monitor_flash_len  - 1,
+		       flash_get_info(CONFIG_SYS_MONITOR_BASE));
+#endif
+
+	/* Environment protection ON by default */
+#ifdef CONFIG_ENV_IS_IN_FLASH
+	flash_protect(FLAG_PROTECT_SET,
+		       CONFIG_ENV_ADDR,
+		       CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE - 1,
+		       flash_get_info(CONFIG_ENV_ADDR));
+#endif
+
+	/* Redundant environment protection ON by default */
+#ifdef CONFIG_ENV_ADDR_REDUND
+	flash_protect(FLAG_PROTECT_SET,
+		       CONFIG_ENV_ADDR_REDUND,
+		       CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SECT_SIZE - 1,
+		       flash_get_info(CONFIG_ENV_ADDR_REDUND));
+#endif
+
+#if defined(CONFIG_SYS_FLASH_AUTOPROTECT_LIST)
+	for (i = 0; i < (sizeof(apl) / sizeof(struct apl_s)); i++) {
+		debug("autoprotecting from %08lx to %08lx\n",
+		      apl[i].start, apl[i].start + apl[i].size - 1);
+		flash_protect(FLAG_PROTECT_SET,
+			       apl[i].start,
+			       apl[i].start + apl[i].size - 1,
+			       flash_get_info(apl[i].start));
+	}
+#endif
+}
+
+unsigned long flash_init (void)
+{
+	unsigned long size = 0;
+	int i;
 
 #ifdef CONFIG_SYS_FLASH_PROTECTION
 	/* read environment from EEPROM */
@@ -2044,12 +2287,16 @@ unsigned long flash_init (void)
 	for (i = 0; i < CONFIG_SYS_MAX_FLASH_BANKS; ++i) {
 		flash_info[i].flash_id = FLASH_UNKNOWN;
 
+		/* Optionally write flash configuration register */
+		cfi_flash_set_config_reg(cfi_flash_bank_addr(i),
+					 cfi_flash_config_reg(i));
+
 		if (!flash_detect_legacy(cfi_flash_bank_addr(i), i))
 			flash_get_size(cfi_flash_bank_addr(i), i);
 		size += flash_info[i].size;
 		if (flash_info[i].flash_id == FLASH_UNKNOWN) {
 #ifndef CONFIG_SYS_FLASH_QUIET_TEST
-			printf ("## Unknown FLASH on Bank %d "
+			printf ("## Unknown flash on Bank %d "
 				"- Size = 0x%08lx = %ld MB\n",
 				i+1, flash_info[i].size,
 				flash_info[i].size >> 20);
@@ -2105,42 +2352,7 @@ unsigned long flash_init (void)
 #endif /* CONFIG_SYS_FLASH_PROTECTION */
 	}
 
-	/* Monitor protection ON by default */
-#if (CONFIG_SYS_MONITOR_BASE >= CONFIG_SYS_FLASH_BASE) && \
-	(!defined(CONFIG_MONITOR_IS_IN_RAM))
-	flash_protect (FLAG_PROTECT_SET,
-		       CONFIG_SYS_MONITOR_BASE,
-		       CONFIG_SYS_MONITOR_BASE + monitor_flash_len  - 1,
-		       flash_get_info(CONFIG_SYS_MONITOR_BASE));
-#endif
-
-	/* Environment protection ON by default */
-#ifdef CONFIG_ENV_IS_IN_FLASH
-	flash_protect (FLAG_PROTECT_SET,
-		       CONFIG_ENV_ADDR,
-		       CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE - 1,
-		       flash_get_info(CONFIG_ENV_ADDR));
-#endif
-
-	/* Redundant environment protection ON by default */
-#ifdef CONFIG_ENV_ADDR_REDUND
-	flash_protect (FLAG_PROTECT_SET,
-		       CONFIG_ENV_ADDR_REDUND,
-		       CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SECT_SIZE - 1,
-		       flash_get_info(CONFIG_ENV_ADDR_REDUND));
-#endif
-
-#if defined(CONFIG_SYS_FLASH_AUTOPROTECT_LIST)
-	for (i = 0; i < (sizeof(apl) / sizeof(struct apl_s)); i++) {
-		debug("autoprotecting from %08x to %08x\n",
-		      apl[i].start, apl[i].start + apl[i].size - 1);
-		flash_protect (FLAG_PROTECT_SET,
-			       apl[i].start,
-			       apl[i].start + apl[i].size - 1,
-			       flash_get_info(apl[i].start));
-	}
-#endif
-
+	flash_protect_default();
 #ifdef CONFIG_FLASH_CFI_MTD
 	cfi_mtd_init();
 #endif
