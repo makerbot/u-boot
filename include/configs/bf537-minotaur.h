@@ -24,7 +24,6 @@
 /*
  * Processor Settings
  */
-#define CONFIG_BFIN_CPU             bf537-0.2
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_SPI_MASTER
 
 
@@ -115,7 +114,7 @@
 #define CONFIG_ENV_OFFSET	0x10000
 #define CONFIG_ENV_SIZE		0x10000
 #define CONFIG_ENV_SECT_SIZE	0x10000
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 
 
 /*

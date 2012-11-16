@@ -50,7 +50,6 @@
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128*1024)
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
@@ -60,7 +59,8 @@
 #define CONFIG_SMC9196_BASE 0x08000300
 #define CONFIG_SMC9196_EXT_PHY
 */
-#define CONFIG_DRIVER_LAN91C96
+#define CONFIG_NET_MULTI
+#define CONFIG_LAN91C96
 #define CONFIG_LAN91C96_BASE 0x08000300
 #define CONFIG_LAN91C96_EXT_PHY
 

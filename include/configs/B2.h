@@ -53,12 +53,11 @@
 #define CONFIG_SYS_MONITOR_LEN		(256 * 1024)	/* Reserve 256 kB for Monitor	*/
 #define CONFIG_ENV_SIZE		1024		/* 1024 bytes may be used for env vars*/
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128*1024 )
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
  */
-#define CONFIG_DRIVER_LAN91C96
+#define CONFIG_LAN91C96
 #define CONFIG_LAN91C96_BASE		0x04000300 /* base address         */
 #define CONFIG_SMC_USE_32_BIT
 #undef  CONFIG_SHOW_ACTIVITY
@@ -98,7 +97,7 @@
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_I2C
 
-
+#define CONFIG_NET_MULTI
 #define CONFIG_BOOTDELAY	5
 #define CONFIG_ETHADDR	00:50:c2:1e:af:fb
 #define CONFIG_BOOTARGS  "setenv bootargs root=/dev/ram ip=192.168.0.70:::::eth0:off \
@@ -207,7 +206,7 @@
 */
 
 /*
-	Linux TAGs (see lib_arm/armlinux.c)
+	Linux TAGs (see arch/arm/lib/armlinux.c)
 */
 #define CONFIG_CMDLINE_TAG
 #undef CONFIG_SETUP_MEMORY_TAGS

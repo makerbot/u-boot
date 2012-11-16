@@ -74,14 +74,23 @@
 #endif	/* CONFIG_ENV_IS_IN_FLASH */
 
 #if defined(CONFIG_ENV_IS_IN_NAND)
-# ifndef CONFIG_ENV_OFFSET
-#  error "Need to define CONFIG_ENV_OFFSET when using CONFIG_ENV_IS_IN_NAND"
-# endif
+# if defined(CONFIG_ENV_OFFSET_OOB)
+#  ifdef CONFIG_ENV_OFFSET_REDUND
+#   error "CONFIG_ENV_OFFSET_REDUND is not supported when CONFIG_ENV_OFFSET_OOB"
+#   error "is set"
+#  endif
+extern unsigned long nand_env_oob_offset;
+#  define CONFIG_ENV_OFFSET nand_env_oob_offset
+# else
+#  ifndef CONFIG_ENV_OFFSET
+#   error "Need to define CONFIG_ENV_OFFSET when using CONFIG_ENV_IS_IN_NAND"
+#  endif
+#  ifdef CONFIG_ENV_OFFSET_REDUND
+#   define CONFIG_SYS_REDUNDAND_ENVIRONMENT
+#  endif
+# endif /* CONFIG_ENV_OFFSET_OOB */
 # ifndef CONFIG_ENV_SIZE
 #  error "Need to define CONFIG_ENV_SIZE when using CONFIG_ENV_IS_IN_NAND"
-# endif
-# ifdef CONFIG_ENV_OFFSET_REDUND
-#  define CONFIG_SYS_REDUNDAND_ENVIRONMENT
 # endif
 #endif /* CONFIG_ENV_IS_IN_NAND */
 
@@ -93,24 +102,6 @@
 #  error "Need to define CONFIG_ENV_SIZE when using CONFIG_ENV_IS_IN_MG_DISK"
 # endif
 #endif /* CONFIG_ENV_IS_IN_MG_DISK */
-
-#if defined(CONFIG_ENV_IS_IN_MMC)
-# ifndef CONFIG_ENV_OFFSET
-#  error "Need to define CONFIG_ENV_OFFSET when using CONFIG_ENV_IS_IN_MMC"
-# endif
-# ifndef CONFIG_ENV_ADDR
-#  define CONFIG_ENV_ADDR      (CONFIG_ENV_OFFSET)
-# endif
-# ifndef CONFIG_ENV_OFFSET
-#  define CONFIG_ENV_OFFSET (CONFIG_ENV_ADDR)
-# endif
-# ifdef CONFIG_ENV_OFFSET_REDUND
-#  define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-# endif
-# ifdef CONFIG_ENV_IS_EMBEDDED
-#  define ENV_IS_EMBEDDED      1
-# endif
-#endif /* CONFIG_ENV_IS_IN_MMC */
 
 /* Embedded env is only supported for some flash types */
 #ifdef CONFIG_ENV_IS_EMBEDDED
@@ -140,6 +131,9 @@
 
 #ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
 # define ENV_HEADER_SIZE	(sizeof(uint32_t) + 1)
+
+# define ACTIVE_FLAG   1
+# define OBSOLETE_FLAG 0
 #else
 # define ENV_HEADER_SIZE	(sizeof(uint32_t))
 #endif
@@ -166,6 +160,9 @@ unsigned char env_get_char_memory (int index);
 void env_crc_update (void);
 
 /* [re]set to the default environment */
-void set_default_env(void);
+void set_default_env(const char *s);
+
+/* Import from binary representation into hash table */
+int env_import(const char *buf, int check);
 
 #endif	/* _ENVIRONMENT_H_ */

@@ -24,9 +24,9 @@
 #define DAVINCI_DM365EVM
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* U-Boot is a 3rd stage loader */
-#define CONFIG_SKIP_RELOCATE_UBOOT
 #define CONFIG_SYS_NO_FLASH		/* that is, no *NOR* flash */
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
+#define	CONFIG_DISPLAY_CPUINFO
 
 /* SoC Configuration */
 #define CONFIG_ARM926EJS				/* arm926ejs CPU */
@@ -39,6 +39,7 @@
 #define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM_1			0x80000000
 #define PHYS_SDRAM_1_SIZE		(128 << 20)	/* 128 MiB */
+#define CONFIG_MAX_RAM_BANK_SIZE	(256 << 20)	/* Max supported */
 
 /* Serial Driver info: UART0 for console  */
 #define CONFIG_SYS_NS16550
@@ -58,6 +59,7 @@
 
 /* Network Configuration */
 #define CONFIG_DRIVER_TI_EMAC
+#define CONFIG_EMAC_MDIO_PHY_NUM	0
 #define CONFIG_MII
 #define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
@@ -85,6 +87,51 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	2
 
+/* SD/MMC */
+#define CONFIG_MMC
+#define CONFIG_GENERIC_MMC
+#define CONFIG_DAVINCI_MMC
+#define CONFIG_DAVINCI_MMC_SD1
+#define CONFIG_MMC_MBLOCK
+
+#define PINMUX4_USBDRVBUS_BITCLEAR       0x3000
+#define PINMUX4_USBDRVBUS_BITSET         0x2000
+
+/* USB Configuration */
+#define CONFIG_USB_DAVINCI
+#define CONFIG_MUSB_HCD
+
+#ifdef CONFIG_USB_DAVINCI
+#define CONFIG_CMD_USB         /* include support for usb      */
+#define CONFIG_CMD_STORAGE     /* include support for usb      */
+#define CONFIG_CMD_FAT         /* include support for FAT/storage*/
+#define CONFIG_DOS_PARTITION   /* include support for FAT/storage*/
+#endif
+
+#ifdef CONFIG_MUSB_HCD         /* include support for usb host */
+#define CONFIG_CMD_USB         /* include support for usb cmd */
+#define CONFIG_USB_STORAGE     /* MSC class support */
+#define CONFIG_CMD_STORAGE     /* inclue support for usb-storage cmd */
+#define CONFIG_CMD_FAT         /* inclue support for FAT/storage */
+#define CONFIG_DOS_PARTITION   /* inclue support for FAT/storage */
+
+#ifdef CONFIG_USB_KEYBOARD     /* HID class support */
+#define CONFIG_SYS_USB_EVENT_POLL
+
+#define CONFIG_PREBOOT "usb start"
+#endif /* CONFIG_USB_KEYBOARD */
+#endif /* CONFIG_MUSB_HCD */
+
+#ifdef CONFIG_MUSB_UDC
+#define CONFIG_USB_DEVICE              1
+#define CONFIG_USB_TTY                 1
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV   1
+#define CONFIG_USBD_VENDORID           0x0451
+#define CONFIG_USBD_PRODUCTID          0x5678
+#define CONFIG_USBD_MANUFACTURER       "Texas Instruments"
+#define CONFIG_USBD_PRODUCT_NAME       "DM365VM"
+#endif /* CONFIG_MUSB_UDC */
+
 /* U-Boot command configuration */
 #include <config_cmd_default.h>
 
@@ -98,6 +145,13 @@
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
+
+#ifdef CONFIG_MMC
+#define CONFIG_DOS_PARTITION
+#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_FAT
+#define CONFIG_CMD_MMC
+#endif
 
 #ifdef CONFIG_NAND_DAVINCI
 #define CONFIG_CMD_MTDPARTS
@@ -114,7 +168,7 @@
 /* U-Boot general configuration */
 #undef CONFIG_USE_IRQ				/* No IRQ/FIQ in U-Boot */
 #define CONFIG_BOOTFILE		"uImage"	/* Boot file name */
-#define CONFIG_SYS_PROMPT	"DM365 EVM # "	/* Monitor Command Prompt */
+#define CONFIG_SYS_PROMPT	"DM36x EVM # "	/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size  */
 #define CONFIG_SYS_PBSIZE			/* Print buffer size */ \
 		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
@@ -130,12 +184,19 @@
 #undef CONFIG_ENV_IS_IN_FLASH
 #endif
 
+#if defined(CONFIG_MMC) && !defined(CONFIG_ENV_IS_IN_NAND)
+#define CONFIG_CMD_ENV
+#define CONFIG_ENV_SIZE		(16 << 10)	/* 16 KiB */
+#define CONFIG_ENV_OFFSET	(51 << 9)	/* Sector 51 */
+#define CONFIG_ENV_IS_IN_MMC
+#undef CONFIG_ENV_IS_IN_FLASH
+#endif
+
 #define CONFIG_BOOTDELAY	3
-#define CONFIG_BOOTCOMMAND \
-		"dhcp;bootm"
+#define CONFIG_BOOTCOMMAND	"if mmc rescan 0; then if fatload mmc 0 0x80600000 boot.scr; then source 0x80600000; else fatload mmc 0 0x80700000 uImage; bootm 80700000; fi; fi"
 #define CONFIG_BOOTARGS \
 		"console=ttyS0,115200n8 " \
-		"root=/dev/mmcblk0p1 rootwait rootfstype=ext3 ro"
+		"root=/dev/mmcblk0p2 rw rootwait ip=off"
 
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_VERSION_VARIABLE
@@ -144,9 +205,8 @@
 /* U-Boot memory configuration */
 #define CONFIG_STACKSIZE		(256 << 10)	/* 256 KiB */
 #define CONFIG_SYS_MALLOC_LEN		(1 << 20)	/* 1 MiB */
-#define CONFIG_SYS_GBL_DATA_SIZE	128		/* for initial data */
-#define CONFIG_SYS_MEMTEST_START	0x87000000	/* physical address */
-#define CONFIG_SYS_MEMTEST_END		0x88000000	/* test 16MB RAM */
+#define CONFIG_SYS_MEMTEST_START	0x88000000	/* physical address */
+#define CONFIG_SYS_MEMTEST_END		0x89000000	/* test 16MB RAM */
 
 /* Linux interfacing */
 #define CONFIG_CMDLINE_TAG
@@ -177,5 +237,11 @@
 
 #define MTDPARTS_DEFAULT	\
 	"mtdparts=davinci_nand.0:" PART_BOOT PART_KERNEL PART_REST
+
+#define CONFIG_MAX_RAM_BANK_SIZE	(256 << 20)	/* 256 MB */
+
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR		\
+	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
 
 #endif /* __CONFIG_H */

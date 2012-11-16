@@ -33,11 +33,13 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_ARMCORTEXA8	1	/* This is an ARM V7 CPU core */
+#define CONFIG_ARMV7		1	/* This is an ARM V7 CPU core */
 #define CONFIG_OMAP		1	/* in a TI OMAP core */
 #define CONFIG_OMAP34XX		1	/* which is a 34XX */
 #define CONFIG_OMAP3430		1	/* which is in a 3430 */
 #define CONFIG_OMAP3_ZOOM2	1	/* working with Zoom II */
+
+#define CONFIG_SDRC	/* The chip has SDRC controller */
 
 #include <asm/arch/cpu.h>	/* get chip and board defs */
 #include <asm/arch/omap3.h>
@@ -66,7 +68,6 @@
 #define CONFIG_ENV_SIZE			(128 << 10)	/* 128 KiB */
 						/* Sector */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + (128 << 10))
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* bytes reserved for */
 						/* initial data */
 /*
  * Hardware drivers
@@ -125,6 +126,20 @@
 #define CONFIG_OMAP3_GPIO_3 /* board revision */
 #define CONFIG_OMAP3_GPIO_5 /* debug board detection, ZOOM2_LED_BLUE */
 
+/* USB */
+#define CONFIG_MUSB_UDC			1
+#define CONFIG_USB_OMAP3		1
+#define CONFIG_TWL4030_USB		1
+
+/* USB device configuration */
+#define CONFIG_USB_DEVICE		1
+#define CONFIG_USB_TTY			1
+/* Change these to suit your needs */
+#define CONFIG_USBD_VENDORID		0x0451
+#define CONFIG_USBD_PRODUCTID		0x5678
+#define CONFIG_USBD_MANUFACTURER	"Texas Instruments"
+#define CONFIG_USBD_PRODUCT_NAME	"Zoom2"
+
 /* commands to include */
 #include <config_cmd_default.h>
 
@@ -170,6 +185,15 @@
 /* Environment information */
 #define CONFIG_BOOTDELAY		10
 
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"usbtty=cdc_acm\0" \
+
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_RAM_ADDR	0x4020f800
+#define CONFIG_SYS_INIT_RAM_SIZE	0x800
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE - \
+					 GENERATED_GBL_DATA_SIZE)
 /*
  * Miscellaneous configurable options
  */
@@ -228,9 +252,6 @@
 #define PISMO1_NAND_SIZE		GPMC_SIZE_128M
 #define PISMO1_ONEN_SIZE		GPMC_SIZE_128M
 
-#define CONFIG_SYS_MAX_FLASH_SECT	520	/* max number of sectors on */
-						/* one chip */
-#define CONFIG_SYS_MAX_FLASH_BANKS	2	/* max number of flash banks */
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 2 sectors */
 
 #define CONFIG_SYS_FLASH_BASE		boot_flash_base
@@ -245,15 +266,7 @@
 #define CONFIG_ENV_OFFSET		boot_flash_off
 #define CONFIG_ENV_ADDR			SMNAND_ENV_OFFSET
 
-/*-----------------------------------------------------------------------
- * CFI FLASH driver setup
- */
-/* timeout values are in ticks */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	(100 * CONFIG_SYS_HZ)
-#define CONFIG_SYS_FLASH_WRITE_TOUT	(100 * CONFIG_SYS_HZ)
-
 #ifndef __ASSEMBLY__
-extern struct gpmc *gpmc_cfg;
 extern unsigned int boot_flash_base;
 extern volatile unsigned int boot_flash_env_addr;
 extern unsigned int boot_flash_off;

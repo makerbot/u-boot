@@ -28,6 +28,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_AT91_LEGACY
+
 /* ARM asynchronous clock */
 #define AT91C_MAIN_CLOCK	179712000	/* from 18.432 MHz crystal (18432000 / 4 * 45) */
 #define AT91C_MASTER_CLOCK	(AT91C_MAIN_CLOCK/3)	/* peripheral clock */
@@ -71,15 +73,12 @@
 #define CONFIG_SYS_SDRC_MR_VAL2	0x00000003 /* Load Mode Register */
 #define CONFIG_SYS_SDRC_MR_VAL3	0x00000000 /* Normal Mode */
 #define CONFIG_SYS_SDRC_TR_VAL	0x000002E0 /* Write refresh rate */
-#else
-#define CONFIG_SKIP_RELOCATE_UBOOT
 #endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
 
 /*
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN	(CONFIG_ENV_SIZE + 128*1024)
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
 
 #define CONFIG_BAUDRATE		115200
 
@@ -181,7 +180,13 @@
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM
 #define CONFIG_SYS_MEMTEST_END		CONFIG_SYS_MEMTEST_START + PHYS_SDRAM_SIZE - 262144
 
-#define CONFIG_DRIVER_ETHER
+#define CONFIG_NET_MULTI		1
+#ifdef CONFIG_NET_MULTI
+#define CONFIG_DRIVER_AT91EMAC		1
+#define CONFIG_SYS_RX_ETH_BUFFER	8
+#else
+#define CONFIG_DRIVER_ETHER		1
+#endif
 #define CONFIG_NET_RETRY_COUNT		20
 #undef CONFIG_AT91C_USE_RMII
 

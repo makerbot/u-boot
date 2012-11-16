@@ -30,6 +30,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#define CONFIG_AT91_LEGACY
+
 #if defined(CONFIG_TNY_A9260_NANDFLASH) || defined(CONFIG_TNY_A9260_EEPROM)
 #define CONFIG_TNY_A9260
 #elif defined(CONFIG_TNY_A9G20_NANDFLASH) || defined(CONFIG_TNY_A9G20_EEPROM)
@@ -49,7 +51,7 @@
 #endif
 
 /* ARM asynchronous clock */
-#define AT91_MAIN_CLOCK		12000000	/* 12 MHz crystal */
+#define CONFIG_SYS_AT91_MAIN_CLOCK	12000000	/* 12 MHz crystal */
 #define CONFIG_SYS_HZ		1000
 
 #define CONFIG_ARM926EJS	1	/* This is an ARM926EJS Core */
@@ -61,11 +63,11 @@
 #define CONFIG_INITRD_TAG	1
 
 #define CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_SKIP_RELOCATE_UBOOT
 
 /*
  * Hardware drivers
  */
+#define CONFIG_AT91_GPIO	1
 #define CONFIG_ATMEL_USART	1
 #undef CONFIG_USART0
 #undef CONFIG_USART1
@@ -161,7 +163,6 @@
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN	ROUND(3 * CONFIG_ENV_SIZE + 128 * 1024, 0x1000)
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* 128 bytes for initial data */
 
 #define CONFIG_STACKSIZE	(32 * 1024)	/* regular stack */
 

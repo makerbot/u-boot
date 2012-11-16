@@ -25,23 +25,21 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
+COBJS-y	+= common.o
 COBJS-$(CONFIG_MACH_DAVINCI_DA830_EVM)	+= da830evm.o
 COBJS-$(CONFIG_MACH_DAVINCI_DA850_EVM)	+= da850evm.o
-COBJS-$(CONFIG_MACH_DAVINCI_MB_PROTO)	+= mb_proto.o
-COBJS-$(CONFIG_MACH_DAVINCI_MB_REV_A)	+= mb_rev_a.o
-COBJS-$(CONFIG_MACH_DAVINCI_MB_REV_B)	+= mb_rev_b.o
-COBJS-$(CONFIG_MACH_DAVINCI_MB_REV_C)	+= mb_rev_c.o
+COBJS-$(CONFIG_MACH_DAVINCI_MANHATTAN_A07) += mb_manhattan_a07.o
 
-COBJS   := $(sort $(COBJS-y))
+COBJS   := $(COBJS-y)
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS) $(SOBJS)
+	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
 
 clean:
 	rm -f $(SOBJS) $(OBJS)

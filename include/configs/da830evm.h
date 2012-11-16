@@ -27,8 +27,8 @@
 /*
  * Board
  */
-#define	CONFIG_USE_SPIFLASH
-#undef	CONFIG_USE_NAND
+#define CONFIG_DRIVER_TI_EMAC
+#define CONFIG_USE_SPIFLASH
 
 /*
  * SoC Configuration
@@ -42,14 +42,13 @@
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_SKIP_RELOCATE_UBOOT	/* to a proper address, init done */
+#define CONFIG_SYS_TEXT_BASE		0xc1080000
 
 /*
  * Memory Info
  */
 #define CONFIG_SYS_MALLOC_LEN	(0x10000 + 1*1024*1024) /* malloc() len */
-#define CONFIG_SYS_GBL_DATA_SIZE	128 /* reserved for initial data */
-#define PHYS_SDRAM_1		DAVINCI_DDR_EMIF_DATA_BASE /* DDR Start */
+#define PHYS_SDRAM_1		0xc0000000 /* DDR Start */
 #define PHYS_SDRAM_1_SIZE	(64 << 20) /* SDRAM size 64MB */
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1 + 0x2000000 /* memtest start addr */
 #define CONFIG_SYS_MEMTEST_END 	(PHYS_SDRAM_1 + 0x2000000 + 32*1024*1024) /* 32MB test */
@@ -87,10 +86,9 @@
 /*
  * Network & Ethernet Configuration
  */
-#define	CONFIG_DRIVER_TI_EMAC
 #ifdef CONFIG_DRIVER_TI_EMAC
+#define CONFIG_EMAC_MDIO_PHY_NUM	1
 #define CONFIG_MII
-#define CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
@@ -107,19 +105,17 @@
 #define CONFIG_NAND_DAVINCI
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_IS_IN_NAND		/* U-Boot env in NAND Flash  */
-#define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
-#define CONFIG_ENV_SIZE			(128 << 10)
-#define	CONFIG_SYS_NAND_USE_FLASH_BBT
+#define CONFIG_ENV_OFFSET		(512 << 10)
+#define CONFIG_ENV_SIZE			(512 << 10)
 #define CONFIG_SYS_NAND_4BIT_HW_ECC_OOBFIRST
-#define	CONFIG_SYS_NAND_PAGE_2K
 #define CONFIG_SYS_NAND_CS		3
 #define CONFIG_SYS_NAND_BASE		DAVINCI_ASYNC_EMIF_DATA_CE3_BASE
+#define CONFIG_SYS_NAND_PAGE_2K
+#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 #define CONFIG_SYS_CLE_MASK		0x10
 #define CONFIG_SYS_ALE_MASK		0x8
-#undef CONFIG_SYS_NAND_HW_ECC
 #define CONFIG_SYS_MAX_NAND_DEVICE	1 /* Max number of NAND devices */
 #define NAND_MAX_CHIPS			1
-#define DEF_BOOTM			""
 #endif
 
 #ifdef CONFIG_USE_NOR
@@ -152,7 +148,7 @@
 #define CONFIG_SYS_SPI_BASE		DAVINCI_SPI0_BASE
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI0_CLKID)
 #define CONFIG_SF_DEFAULT_SPEED		30000000
-#define CONFIG_ENV_SPI_MAX_HZ		CONFIG_SF_DEFAULT_SPEED
+#define CONFIG_ENV_SPI_MAX_HZ	CONFIG_SF_DEFAULT_SPEED
 #endif
 
 /*
@@ -165,8 +161,9 @@
  * U-Boot general configuration
  */
 #undef CONFIG_USE_IRQ			/* No IRQ/FIQ in U-Boot */
-#define CONFIG_MISC_INIT_R
+#undef CONFIG_MISC_INIT_R
 #undef CONFIG_BOOTDELAY
+#define CONFIG_MISC_INIT_R
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
 #define CONFIG_SYS_PROMPT	"U-Boot > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
@@ -220,6 +217,9 @@
 #undef CONFIG_CMD_FLASH
 #undef CONFIG_CMD_IMLS
 #define CONFIG_CMD_NAND
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_PARTITIONS
+#define CONFIG_MTD_DEVICE
 #endif
 
 #ifdef CONFIG_USE_SPIFLASH
@@ -271,4 +271,22 @@
 #endif /* CONFIG_MUSB_UDC */
 
 #endif /* CONFIG_USB_DA8XX */
+
+#ifdef CONFIG_MTD_PARTITIONS
+#define MTDIDS_DEFAULT		"nand0=davinci_nand.1"
+#define PART_BOOT		"512k(bootloader)ro,"
+#define PART_PARAMS		"512k(params)ro,"
+#define PART_KERNEL		"4m(kernel),"
+#define PART_REST		"-(filesystem)"
+#define MTDPARTS_DEFAULT        \
+	"mtdparts=davinci_nand.1:" PART_BOOT PART_PARAMS PART_KERNEL PART_REST
+#endif
+
+#define CONFIG_MAX_RAM_BANK_SIZE (512 << 20) /* max size from SPRS586*/
+
+/* additions for new relocation code, must be added to all boards */
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR		\
+	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
+
 #endif /* __CONFIG_H */

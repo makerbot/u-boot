@@ -1,6 +1,6 @@
 /*
  * NS16550 Serial Port
- * originally from linux source (arch/ppc/boot/ns16550.h)
+ * originally from linux source (arch/powerpc/boot/ns16550.h)
  *
  * Cleanup and unification
  * (C) 2009 by Detlev Zundel, DENX Software Engineering GmbH
@@ -23,6 +23,14 @@
 
 #if !defined(CONFIG_SYS_NS16550_REG_SIZE) || (CONFIG_SYS_NS16550_REG_SIZE == 0)
 #error "Please define NS16550 registers size."
+#elif defined(CONFIG_SOC_DM646X) && (CONFIG_SYS_NS16550_REG_SIZE == 4)
+/* HACK - Avoid strb/ldrb instructions being generated on dm6467 UART access
+ * since it leads to system hang otherwise.
+ * Discussed in community:
+ * http://www.mail-archive.com/u-boot@lists.denx.de/msg27002.html
+ */
+#define UART_REG(x)						   	\
+	unsigned int x;
 #elif (CONFIG_SYS_NS16550_REG_SIZE > 0)
 #define UART_REG(x)						   \
 	unsigned char prepad_##x[CONFIG_SYS_NS16550_REG_SIZE - 1]; \

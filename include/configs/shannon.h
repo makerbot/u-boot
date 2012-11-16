@@ -34,7 +34,6 @@
  */
 #define CONFIG_INFERNO			/* we are using the inferno bootldr */
 #define CONFIG_SKIP_LOWLEVEL_INIT	1
-#undef  CONFIG_SKIP_RELOCATE_UBOOT
 
 /*
  * High Level Configuration Options
@@ -51,7 +50,6 @@
  * Size of malloc() pool
  */
 #define CONFIG_SYS_MALLOC_LEN		(CONFIG_ENV_SIZE + 128*1024)
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
@@ -161,12 +159,13 @@
 
 #define	CONFIG_ENV_IS_IN_FLASH	1
 #ifdef CONFIG_INFERNO
-/* we take the last sector, 128 KB in size, but we only use 4 KB of it for stack reasons */
+/* we take the last sector, 128 KB in size, but we only use 16 KB of it for stack reasons */
 #define CONFIG_ENV_ADDR		(PHYS_FLASH_1 + 0x003E0000)	/* Addr of Environment Sector	*/
-#define CONFIG_ENV_SIZE		0x4000	/* Total Size of Environment Sector	*/
+#define CONFIG_ENV_SIZE		0x4000	/* Total Size of Environment 	*/
+#define CONFIG_ENV_SECT_SIZE	(128 << 10)	/* size of environment sector */
 #else
 #define CONFIG_ENV_ADDR		(PHYS_FLASH_1 + 0x1C000)	/* Addr of Environment Sector	*/
-#define CONFIG_ENV_SIZE		0x4000	/* Total Size of Environment Sector	*/
+#define CONFIG_ENV_SIZE		0x4000	/* Total Size of Environment 	*/
 #endif
 
 /*-----------------------------------------------------------------------

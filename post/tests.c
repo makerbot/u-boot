@@ -53,6 +53,7 @@ extern int gdc_post_test (int flags);
 extern int fpga_post_test (int flags);
 extern int lwmon5_watchdog_post_test(int flags);
 extern int sysmon1_post_test(int flags);
+extern int coprocessor_post_test(int flags);
 
 extern int sysmon_init_f (void);
 
@@ -164,6 +165,9 @@ struct post_test post_list[] =
     },
 #endif
 #if CONFIG_POST & CONFIG_SYS_POST_UART
+#if defined(CONFIG_POST_UART)
+	CONFIG_POST_UART,
+#else
     {
 	"UART test",
 	"uart",
@@ -174,6 +178,7 @@ struct post_test post_list[] =
 	NULL,
 	CONFIG_SYS_POST_UART
     },
+#endif /* CONFIG_POST_UART */
 #endif
 #if CONFIG_POST & CONFIG_SYS_POST_ETHER
     {
@@ -285,6 +290,18 @@ struct post_test post_list[] =
 #endif
 #if CONFIG_POST & CONFIG_SYS_POST_BSPEC5
 	CONFIG_POST_BSPEC5,
+#endif
+#if CONFIG_POST & CONFIG_SYS_POST_COPROC
+    {
+	"Coprocessors communication test",
+	"coproc_com",
+	"This test checks communication with coprocessors.",
+	POST_RAM | POST_ALWAYS | POST_CRITICAL,
+	&coprocessor_post_test,
+	NULL,
+	NULL,
+	CONFIG_SYS_POST_COPROC
+    }
 #endif
 };
 

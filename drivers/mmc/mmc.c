@@ -32,9 +32,17 @@
 #include <linux/list.h>
 #include <mmc.h>
 #include <div64.h>
+#include <asm-generic/errno.h>
 
 static struct list_head mmc_devices;
 static int cur_dev_num = -1;
+
+int __board_mmc_getcd(u8 *cd, struct mmc *mmc) {
+	return -1;
+}
+
+int board_mmc_getcd(u8 *cd, struct mmc *mmc)__attribute__((weak,
+	alias("__board_mmc_getcd")));
 
 int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 {
@@ -70,12 +78,17 @@ struct mmc *find_mmc_device(int dev_num)
 	return NULL;
 }
 
-static int mmc_write_block(struct mmc *mmc, const char *src, uint blocknum,
-		uint blkcnt)
+static ulong
+mmc_write_blocks(struct mmc *mmc, ulong start, lbaint_t blkcnt, const void*src)
 {
-	int err;
 	struct mmc_cmd cmd;
 	struct mmc_data data;
+
+	if ((start + blkcnt) > mmc->block_dev.lba) {
+		printf("MMC: block number 0x%lx exceeds max(0x%lx)\n",
+			start + blkcnt, mmc->block_dev.lba);
+		return 0;
+	}
 
 	if (blkcnt > 1)
 		cmd.cmdidx = MMC_CMD_WRITE_MULTIPLE_BLOCK;
@@ -83,9 +96,9 @@ static int mmc_write_block(struct mmc *mmc, const char *src, uint blocknum,
 		cmd.cmdidx = MMC_CMD_WRITE_SINGLE_BLOCK;
 
 	if (mmc->high_capacity)
-		cmd.cmdarg = blocknum;
+		cmd.cmdarg = start;
 	else
-		cmd.cmdarg = blocknum * mmc->write_bl_len;
+		cmd.cmdarg = start * mmc->write_bl_len;
 
 	cmd.resp_type = MMC_RSP_R1;
 	cmd.flags = 0;
@@ -95,63 +108,55 @@ static int mmc_write_block(struct mmc *mmc, const char *src, uint blocknum,
 	data.blocksize = mmc->write_bl_len;
 	data.flags = MMC_DATA_WRITE;
 
-	err = mmc_send_cmd(mmc, &cmd, &data);
-	if (err)
-		return err;
+	if (mmc_send_cmd(mmc, &cmd, &data)) {
+		printf("mmc write failed\n");
+		return 0;
+	}
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
 		cmd.cmdarg = 0;
 		cmd.resp_type = MMC_RSP_R1b;
 		cmd.flags = 0;
-		err = mmc_send_cmd(mmc, &cmd, NULL);
+		if (mmc_send_cmd(mmc, &cmd, NULL)) {
+			printf("mmc fail to send stop cmd\n");
+			return 0;
+		}
 	}
 
-	return err;
+	return blkcnt;
 }
 
 static ulong
 mmc_bwrite(int dev_num, ulong start, lbaint_t blkcnt, const void*src)
 {
-	int err;
-	int i;
-	struct mmc *mmc = find_mmc_device(dev_num);
-#ifdef CONFIG_MMC_MBLOCK
-	uint b_max = mmc->b_max;
-#else
-	uint b_max = 1;
-#endif
+	lbaint_t cur, blocks_todo = blkcnt;
 
+	struct mmc *mmc = find_mmc_device(dev_num);
 	if (!mmc)
 		return 0;
 
-	/* We always do full block reads from the card */
-	err = mmc_set_blocklen(mmc, mmc->write_bl_len);
-
-	if (err) {
+	if (mmc_set_blocklen(mmc, mmc->write_bl_len))
 		return 0;
-	}
 
-	for (i = blkcnt; i > 0; i -= b_max) {
-		uint blocks = (i > b_max) ? b_max : i;
-
-		err = mmc_write_block(mmc, src, start, blocks);
-		if (err) {
-			printf("block write failed: %d\n", err);
-			return blkcnt - i;
-		}
-		start += blocks;
-		src += (mmc->write_bl_len * blocks);
-	}
+	do {
+		/*
+		 * The 65535 constraint comes from some hardware has
+		 * only 16 bit width block number counter
+		 */
+		cur = (blocks_todo > 65535) ? 65535 : blocks_todo;
+		if(mmc_write_blocks(mmc, start, cur, src) != cur)
+			return 0;
+		blocks_todo -= cur;
+		start += cur;
+		src += cur * mmc->write_bl_len;
+	} while (blocks_todo > 0);
 
 	return blkcnt;
-
 }
 
-static int
-mmc_read_block(struct mmc *mmc, void *dst, uint blocknum, uint blkcnt)
+int mmc_read_blocks(struct mmc *mmc, void *dst, ulong start, lbaint_t blkcnt)
 {
-	int err;
 	struct mmc_cmd cmd;
 	struct mmc_data data;
 
@@ -161,9 +166,9 @@ mmc_read_block(struct mmc *mmc, void *dst, uint blocknum, uint blkcnt)
 		cmd.cmdidx = MMC_CMD_READ_SINGLE_BLOCK;
 
 	if (mmc->high_capacity)
-		cmd.cmdarg = blocknum;
+		cmd.cmdarg = start;
 	else
-		cmd.cmdarg = blocknum * mmc->read_bl_len;
+		cmd.cmdarg = start * mmc->read_bl_len;
 
 	cmd.resp_type = MMC_RSP_R1;
 	cmd.flags = 0;
@@ -173,55 +178,55 @@ mmc_read_block(struct mmc *mmc, void *dst, uint blocknum, uint blkcnt)
 	data.blocksize = mmc->read_bl_len;
 	data.flags = MMC_DATA_READ;
 
-	err = mmc_send_cmd(mmc, &cmd, &data);
-	if (err) {
-		return err;
-	}
+	if (mmc_send_cmd(mmc, &cmd, &data))
+		return 0;
 
 	if (blkcnt > 1) {
 		cmd.cmdidx = MMC_CMD_STOP_TRANSMISSION;
 		cmd.cmdarg = 0;
 		cmd.resp_type = MMC_RSP_R1b;
 		cmd.flags = 0;
-		err = mmc_send_cmd(mmc, &cmd, NULL);
+		if (mmc_send_cmd(mmc, &cmd, NULL)) {
+			printf("mmc fail to send stop cmd\n");
+			return 0;
+		}
 	}
 
-	return err;
+	return blkcnt;
 }
 
-static ulong
-mmc_bread(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
+static ulong mmc_bread(int dev_num, ulong start, lbaint_t blkcnt, void *dst)
 {
-	int err;
-	int i;
-	struct mmc *mmc = find_mmc_device(dev_num);
-#ifdef CONFIG_MMC_MBLOCK
-	uint b_max = mmc->b_max;
-#else
-	uint b_max = 1;
-#endif
+	lbaint_t cur, blocks_todo = blkcnt;
 
+	if (blkcnt == 0)
+		return 0;
+
+	struct mmc *mmc = find_mmc_device(dev_num);
 	if (!mmc)
 		return 0;
 
-	/* We always do full block reads from the card */
-	err = mmc_set_blocklen(mmc, mmc->read_bl_len);
-
-	if (err) {
+	if ((start + blkcnt) > mmc->block_dev.lba) {
+		printf("MMC: block number 0x%lx exceeds max(0x%lx)\n",
+			start + blkcnt, mmc->block_dev.lba);
 		return 0;
 	}
 
-	for (i = blkcnt; i > 0; i -= b_max) {
-		uint blocks = (i > b_max) ? b_max : i;
+	if (mmc_set_blocklen(mmc, mmc->read_bl_len))
+		return 0;
 
-		err = mmc_read_block(mmc, dst, start, blocks);
-		if (err) {
-			printf("block read failed: %d\n", err);
-			return blkcnt - i;
-		}
-		start += blocks;
-		dst += (mmc->read_bl_len * blocks);
-	}
+	do {
+		/*
+		 * The 65535 constraint comes from some hardware has
+		 * only 16 bit width block number counter
+		 */
+		cur = (blocks_todo > 65535) ? 65535 : blocks_todo;
+		if(mmc_read_blocks(mmc, dst, start, cur) != cur)
+			return 0;
+		blocks_todo -= cur;
+		start += cur;
+		dst += cur * mmc->read_bl_len;
+	} while (blocks_todo > 0);
 
 	return blkcnt;
 }
@@ -268,7 +273,15 @@ sd_send_op_cond(struct mmc *mmc)
 
 		cmd.cmdidx = SD_CMD_APP_SEND_OP_COND;
 		cmd.resp_type = MMC_RSP_R3;
-		cmd.cmdarg = mmc->voltages;
+
+		/*
+		 * Most cards do not answer if some reserved bits
+		 * in the ocr are set. However, Some controller
+		 * can set bit 7 (reserved for low voltages), but
+		 * how to manage low voltages SD card is not yet
+		 * specified.
+		 */
+		cmd.cmdarg = mmc->voltages & 0xff8000;
 
 		if (mmc->version == SD_VERSION_2)
 			cmd.cmdarg |= OCR_HCS;
@@ -597,6 +610,7 @@ int mmc_startup(struct mmc *mmc)
 	uint mult, freq;
 	u64 cmult, csize;
 	struct mmc_cmd cmd;
+	char ext_csd[512];
 
 	/* Put the Card in Identify Mode */
 	cmd.cmdidx = MMC_CMD_ALL_SEND_CID;
@@ -711,6 +725,16 @@ int mmc_startup(struct mmc *mmc)
 
 	if (err)
 		return err;
+
+	if (!IS_SD(mmc) && (mmc->version >= MMC_VERSION_4)) {
+		/* check  ext_csd version and capacity */
+		err = mmc_send_ext_csd(mmc, ext_csd);
+		if (!err & (ext_csd[192] >= 2)) {
+			mmc->capacity = ext_csd[212] << 0 | ext_csd[213] << 8 |
+					ext_csd[214] << 16 | ext_csd[215] << 24;
+			mmc->capacity *= 512;
+		}
+	}
 
 	if (IS_SD(mmc))
 		err = sd_change_freq(mmc);
@@ -831,10 +855,6 @@ int mmc_register(struct mmc *mmc)
 	mmc->block_dev.block_read = mmc_bread;
 	mmc->block_dev.block_write = mmc_bwrite;
 
-#ifdef CONFIG_MMC_MBLOCK
-	if (mmc->b_max == 0)
-		mmc->b_max = 1;
-#endif
 	INIT_LIST_HEAD (&mmc->link);
 
 	list_add_tail (&mmc->link, &mmc_devices);
@@ -879,7 +899,7 @@ int mmc_init(struct mmc *mmc)
 
 		if (err) {
 			printf("Card did not respond to voltage select!\n");
-			return UNUSABLE_ERR;
+			return ENODEV;
 		}
 	}
 

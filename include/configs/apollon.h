@@ -79,7 +79,6 @@
 #define CONFIG_ENV_SIZE_FLEX SZ_256K
 #define	CONFIG_SYS_MALLOC_LEN	(CONFIG_ENV_SIZE + SZ_1M)
 /* bytes reserved for initial data */
-#define	CONFIG_SYS_GBL_DATA_SIZE	128
 
 /*
  * Hardware drivers
@@ -88,7 +87,8 @@
 /*
  * SMC91c96 Etherent
  */
-#define	CONFIG_DRIVER_LAN91C96
+#define CONFIG_NET_MULTI
+#define	CONFIG_LAN91C96
 #define	CONFIG_LAN91C96_BASE	(APOLLON_CS1_BASE+0x300)
 #define	CONFIG_LAN91C96_EXT_PHY
 
@@ -184,10 +184,8 @@
 /*
  * Miscellaneous configurable options
  */
-#define	V_PROMPT	"Apollon # "
-
 #define	CONFIG_SYS_LONGHELP	/* undef to save memory */
-#define	CONFIG_SYS_PROMPT	V_PROMPT
+#define	CONFIG_SYS_PROMPT	"Apollon # "
 #define	CONFIG_SYS_CBSIZE	256	/* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define	CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)

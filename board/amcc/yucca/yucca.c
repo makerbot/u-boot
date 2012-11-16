@@ -26,7 +26,7 @@
  */
 
 #include <common.h>
-#include <ppc4xx.h>
+#include <asm/ppc4xx.h>
 #include <i2c.h>
 #include <netdev.h>
 #include <asm/processor.h>
@@ -555,7 +555,7 @@ int checkboard (void)
 }
 
 /*
- * Override the default functions in cpu/ppc4xx/44x_spd_ddr2.c with
+ * Override the default functions in arch/powerpc/cpu/ppc4xx/44x_spd_ddr2.c with
  * board specific values.
  */
 static int ppc440spe_rev_a(void)
@@ -609,7 +609,7 @@ int board_pcie_card_present(int port)
 /*
  * For the given slot, set endpoint mode, send power to the slot,
  * turn on the green LED and turn off the yellow LED, enable the
- * clock. In end point mode reset bit is read only.
+ * clock. In endpoint mode reset bit is read only.
  */
 void board_pcie_setup_port(int port, int rootpoint)
 {

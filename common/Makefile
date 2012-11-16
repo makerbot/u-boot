@@ -23,9 +23,7 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)libcommon.a
-
-AOBJS	=
+LIB	= $(obj)libcommon.o
 
 # core
 COBJS-y += main.o
@@ -52,9 +50,9 @@ COBJS-y += cmd_version.o
 COBJS-y += env_common.o
 COBJS-$(CONFIG_ENV_IS_IN_DATAFLASH) += env_dataflash.o
 COBJS-$(CONFIG_ENV_IS_IN_EEPROM) += env_eeprom.o
-COBJS-$(CONFIG_ENV_IS_EMBEDDED) += env_embedded.o
+XCOBJS-$(CONFIG_ENV_IS_EMBEDDED) += env_embedded.o
 COBJS-$(CONFIG_ENV_IS_IN_EEPROM) += env_embedded.o
-COBJS-$(CONFIG_ENV_IS_IN_FLASH) += env_embedded.o
+XCOBJS-$(CONFIG_ENV_IS_IN_FLASH) += env_embedded.o
 COBJS-$(CONFIG_ENV_IS_IN_NVRAM) += env_embedded.o
 COBJS-$(CONFIG_ENV_IS_IN_FLASH) += env_flash.o
 COBJS-$(CONFIG_ENV_IS_IN_MG_DISK) += env_mgdisk.o
@@ -106,6 +104,7 @@ COBJS-$(CONFIG_CMD_IMMAP) += cmd_immap.o
 COBJS-$(CONFIG_CMD_IRQ) += cmd_irq.o
 COBJS-$(CONFIG_CMD_ITEST) += cmd_itest.o
 COBJS-$(CONFIG_CMD_JFFS2) += cmd_jffs2.o
+COBJS-$(CONFIG_CMD_CRAMFS) += cmd_cramfs.o
 COBJS-$(CONFIG_CMD_LICENSE) += cmd_license.o
 COBJS-y += cmd_load.o
 COBJS-$(CONFIG_LOGBUFFER) += cmd_log.o
@@ -158,7 +157,7 @@ COBJS-$(CONFIG_DDR_SPD) += ddr_spd.o
 COBJS-$(CONFIG_HWCONFIG) += hwconfig.o
 COBJS-$(CONFIG_CONSOLE_MUX) += iomux.o
 COBJS-y += flash.o
-COBJS-$(CONFIG_CMD_KGDB) += kgdb.o
+COBJS-$(CONFIG_CMD_KGDB) += kgdb.o kgdb_stubs.o
 COBJS-$(CONFIG_KALLSYMS) += kallsyms.o
 COBJS-$(CONFIG_LCD) += lcd.o
 COBJS-$(CONFIG_LYNXKDI) += lynxkdi.o
@@ -168,15 +167,17 @@ COBJS-$(CONFIG_USB_KEYBOARD) += usb_kbd.o
 
 
 COBJS	:= $(sort $(COBJS-y))
-SRCS	:= $(AOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(AOBJS) $(COBJS))
+XCOBJS	:= $(sort $(XCOBJS-y))
+SRCS	:= $(COBJS:.o=.c) $(XCOBJS:.o=.c)
+OBJS	:= $(addprefix $(obj),$(COBJS))
+XOBJS	:= $(addprefix $(obj),$(XCOBJS))
 
 CPPFLAGS += -I..
 
-all:	$(LIB) $(AOBJS)
+all:	$(LIB) $(XOBJS)
 
 $(LIB): $(obj).depend $(OBJS)
-	$(AR) $(ARFLAGS) $@ $(OBJS)
+	$(call cmd_link_o_target, $(OBJS))
 
 $(obj)env_embedded.o: $(src)env_embedded.c $(obj)../tools/envcrc
 	$(CC) $(AFLAGS) -Wa,--no-warn \

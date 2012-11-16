@@ -11,7 +11,6 @@
 /*
  * Processor Settings
  */
-#define CONFIG_BFIN_CPU             bf561-0.3
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_BYPASS
 
 
@@ -87,7 +86,7 @@
 #if (CONFIG_BFIN_BOOT_MODE == BFIN_BOOT_BYPASS)
 #define ENV_IS_EMBEDDED
 #else
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 #endif
 #ifdef ENV_IS_EMBEDDED
 /* WARNING - the following is hand-optimized to fit within
@@ -96,15 +95,10 @@
  * it linked after the configuration sector.
  */
 # define LDS_BOARD_TEXT \
-	cpu/blackfin/traps.o		(.text .text.*); \
-	cpu/blackfin/interrupt.o	(.text .text.*); \
-	cpu/blackfin/serial.o		(.text .text.*); \
-	common/dlmalloc.o		(.text .text.*); \
-	lib_generic/crc32.o		(.text .text.*); \
-	lib_generic/zlib.o		(.text .text.*); \
-	board/bf561-ezkit/bf561-ezkit.o	(.text .text.*); \
+	arch/blackfin/lib/libblackfin.o (.text*); \
+	arch/blackfin/cpu/libblackfin.o (.text*); \
 	. = DEFINED(env_offset) ? env_offset : .; \
-	common/env_embedded.o		(.text .text.*);
+	common/env_embedded.o (.text*);
 #endif
 
 
@@ -112,48 +106,8 @@
  * I2C Settings
  */
 #define CONFIG_SOFT_I2C
-#ifdef CONFIG_SOFT_I2C
-#define PF_SCL PF0
-#define PF_SDA PF1
-#define I2C_INIT \
-	do { \
-		*pFIO0_DIR |= PF_SCL; \
-		SSYNC(); \
-	} while (0)
-#define I2C_ACTIVE \
-	do { \
-		*pFIO0_DIR |= PF_SDA; \
-		*pFIO0_INEN &= ~PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_TRISTATE \
-	do { \
-		*pFIO0_DIR &= ~PF_SDA; \
-		*pFIO0_INEN |= PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_READ ((*pFIO0_FLAG_D & PF_SDA) != 0)
-#define I2C_SDA(bit) \
-	do { \
-		if (bit) \
-			*pFIO0_FLAG_S = PF_SDA; \
-		else \
-			*pFIO0_FLAG_C = PF_SDA; \
-		SSYNC(); \
-	} while (0)
-#define I2C_SCL(bit) \
-	do { \
-		if (bit) \
-			*pFIO0_FLAG_S = PF_SCL; \
-		else \
-			*pFIO0_FLAG_C = PF_SCL; \
-		SSYNC(); \
-	} while (0)
-#define I2C_DELAY		udelay(5)	/* 1/4 I2C clock duration */
-
-#define CONFIG_SYS_I2C_SPEED		50000
-#define CONFIG_SYS_I2C_SLAVE		0
-#endif
+#define CONFIG_SOFT_I2C_GPIO_SCL GPIO_PF0
+#define CONFIG_SOFT_I2C_GPIO_SDA GPIO_PF1
 
 
 /*

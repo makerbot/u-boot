@@ -1,5 +1,5 @@
 /*
- * Copyright 2009 Freescale Semiconductor, Inc.
+ * Copyright 2009-2010 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2000
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -46,15 +46,20 @@ struct fsl_e_tlb_entry tlb_table[] = {
 
 	/* TLB 1 Initializations */
 	/*
-	 * TLBe 0:	64M	Non-cacheable, guarded
+	 * TLBe 0:	64M	write-through, guarded
 	 * Out of reset this entry is only 4K.
-	 * 0xfc000000	256K	NAND FLASH (CS3)
-	 * 0xfe000000	32M	NOR FLASH (CS0)
+	 * 0xfc000000	32MB	NAND FLASH (CS3)
+	 * 0xfe000000	32MB	NOR FLASH (CS0)
 	 */
+#ifdef CONFIG_NAND_SPL
 	SET_TLB_ENTRY(1, CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_BASE,
 		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+		      0, 0, BOOKE_PAGESZ_1M, 1),
+#else
+	SET_TLB_ENTRY(1, CONFIG_SYS_NAND_BASE, CONFIG_SYS_NAND_BASE,
+		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_W|MAS2_G,
 		      0, 0, BOOKE_PAGESZ_64M, 1),
-
+#endif
 	/*
 	 * TLBe 1:	256KB	Non-cacheable, guarded
 	 * 0xf8000000	32K	BCSR
@@ -90,6 +95,17 @@ struct fsl_e_tlb_entry tlb_table[] = {
 	SET_TLB_ENTRY(1, CONFIG_SYS_CCSRBAR, CONFIG_SYS_CCSRBAR_PHYS,
 		      MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		      0, 4, BOOKE_PAGESZ_64M, 1),
+
+#if defined(CONFIG_SYS_RAMBOOT) && defined(CONFIG_SYS_INIT_L2_ADDR)
+	/* *I*G - L2SRAM */
+	SET_TLB_ENTRY(1, CONFIG_SYS_INIT_L2_ADDR, CONFIG_SYS_INIT_L2_ADDR_PHYS,
+			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+			0, 5, BOOKE_PAGESZ_256K, 1),
+	SET_TLB_ENTRY(1, CONFIG_SYS_INIT_L2_ADDR + 0x40000,
+			CONFIG_SYS_INIT_L2_ADDR_PHYS + 0x40000,
+			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+			0, 6, BOOKE_PAGESZ_256K, 1),
+#endif
 };
 
 int num_tlb_entries = ARRAY_SIZE(tlb_table);

@@ -24,7 +24,7 @@
 OUTPUT_ARCH(m68k)
 /* Do we need any of these for elf?
    __DYNAMIC = 0;    */
-GROUP(libgcc.a)
+GROUP(libgcc.o)
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
@@ -56,11 +56,11 @@ SECTIONS
     /* WARNING - the following is hand-optimized to fit within	*/
     /* the sector layout of our flash chips!	XXX FIXME XXX	*/
 
-    cpu/mcf52x2/start.o		(.text)
-    lib_m68k/traps.o		(.text)
-    cpu/mcf52x2/interrupts.o	(.text)
+    arch/m68k/cpu/mcf52x2/start.o		(.text)
+    arch/m68k/lib/traps.o		(.text)
+    arch/m68k/cpu/mcf52x2/interrupts.o	(.text)
     common/dlmalloc.o		(.text)
-    lib_generic/zlib.o		(.text)
+    lib/zlib.o		(.text)
 
     . = DEFINED(env_offset) ? env_offset : .;
     common/env_embedded.o	(.ppcenv)

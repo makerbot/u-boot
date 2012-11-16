@@ -11,7 +11,6 @@
 /*
  * Processor Settings
  */
-#define CONFIG_BFIN_CPU             bf548-0.0
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_PARA
 
 
@@ -107,7 +106,7 @@
 #define CONFIG_ENV_OFFSET	0x10000
 #define CONFIG_ENV_SIZE		0x2000
 #define CONFIG_ENV_SECT_SIZE	0x10000
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 #elif (CONFIG_BFIN_BOOT_MODE == BFIN_BOOT_NAND)
 #define CONFIG_ENV_IS_IN_NAND
 #define CONFIG_ENV_OFFSET	0x40000
@@ -118,7 +117,7 @@
 #define CONFIG_ENV_OFFSET	0x2000
 #define CONFIG_ENV_SIZE		0x2000
 #define CONFIG_ENV_SECT_SIZE	(128 * 1024)
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 #endif
 
 
@@ -133,7 +132,6 @@
 #define CONFIG_SYS_NAND_BASE		0 /* not actually used */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define NAND_MAX_CHIPS		1
-#define CONFIG_CMD_NAND
 
 
 /*
@@ -141,8 +139,6 @@
  */
 #define CONFIG_BFIN_TWI_I2C	1
 #define CONFIG_HARD_I2C		1
-#define CONFIG_SYS_I2C_SPEED	50000
-#define CONFIG_SYS_I2C_SLAVE	0
 
 
 /*
@@ -162,6 +158,7 @@
  * SDH Settings
  */
 #if !defined(__ADSPBF544__)
+#define CONFIG_GENERIC_MMC
 #define CONFIG_MMC
 #define CONFIG_BFIN_SDH
 #endif
@@ -183,8 +180,10 @@
  * Misc Settings
  */
 #define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_SIZE_LIMIT $$(( 512 * 1024 ))
 #define CONFIG_RTC_BFIN
 #define CONFIG_UART_CONSOLE	1
+#define CONFIG_BFIN_SPI_IMG_SIZE 0x50000
 
 #ifndef __ADSPBF542__
 /* Don't waste time transferring a logo over the UART */

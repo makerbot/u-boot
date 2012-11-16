@@ -35,15 +35,15 @@ const char *weekdays[] = {
 	"Sun", "Mon", "Tues", "Wednes", "Thurs", "Fri", "Satur",
 };
 
-#ifdef CONFIG_RELOC_FIXUP_WORKS
-#define RELOC(a)	a
-#else
+#ifdef CONFIG_NEEDS_MANUAL_RELOC
 #define RELOC(a)	((typeof(a))((unsigned long)(a) + gd->reloc_off))
+#else
+#define RELOC(a)	a
 #endif
 
 int mk_date (char *, struct rtc_time *);
 
-int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_date (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	struct rtc_time tm;
 	int rcode = 0;

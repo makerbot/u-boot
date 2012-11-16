@@ -26,7 +26,6 @@
 #define CMD_SST_FAST_READ	0x0b	/* Read Data Bytes at Higher Speed */
 #define CMD_SST_BP		0x02	/* Byte Program */
 #define CMD_SST_AAI_WP		0xAD	/* Auto Address Increment Word Program */
-#define CMD_SST_AAI_BP		0xAF	/* Auto Address Increment Byte Program */
 #define CMD_SST_SE		0x20	/* Sector Erase */
 
 #define SST_SR_WIP		(1 << 0)	/* Write-in-Progress */
@@ -40,8 +39,6 @@
 struct sst_spi_flash_params {
 	u8 idcode1;
 	u16 nr_sectors;
-	int (*write)(struct spi_flash *flash, u32 offset,
-		     size_t len, const void *buf);
 	const char *name;
 };
 
@@ -55,58 +52,39 @@ static inline struct sst_spi_flash *to_sst_spi_flash(struct spi_flash *flash)
 	return container_of(flash, struct sst_spi_flash, flash);
 }
 
-// Prototypes for write functions
-static int
-sst_aii_bp_write(struct spi_flash *flash, u32 offset, size_t len, const void *buf);
-static int
-sst_aii_wp_write(struct spi_flash *flash, u32 offset, size_t len, const void *buf);
-
 #define SST_SECTOR_SIZE (4 * 1024)
 static const struct sst_spi_flash_params sst_spi_flash_table[] = {
 	{
-		.idcode1 = 0x43,
-		.nr_sectors = 512,
-		.write = sst_aii_bp_write,
-		.name = "SST25VF020",
-	},{
 		.idcode1 = 0x8d,
 		.nr_sectors = 128,
-		.write = sst_aii_wp_write,
 		.name = "SST25VF040B",
 	},{
 		.idcode1 = 0x8e,
 		.nr_sectors = 256,
-		.write = sst_aii_wp_write,
 		.name = "SST25VF080B",
 	},{
 		.idcode1 = 0x41,
 		.nr_sectors = 512,
-		.write = sst_aii_wp_write,
 		.name = "SST25VF016B",
 	},{
 		.idcode1 = 0x4a,
 		.nr_sectors = 1024,
-		.write = sst_aii_wp_write,
 		.name = "SST25VF032B",
 	},{
 		.idcode1 = 0x01,
 		.nr_sectors = 16,
-		.write = sst_aii_wp_write,
 		.name = "SST25WF512",
 	},{
 		.idcode1 = 0x02,
 		.nr_sectors = 32,
-		.write = sst_aii_wp_write,
 		.name = "SST25WF010",
 	},{
 		.idcode1 = 0x03,
 		.nr_sectors = 64,
-		.write = sst_aii_wp_write,
 		.name = "SST25WF020",
 	},{
 		.idcode1 = 0x04,
 		.nr_sectors = 128,
-		.write = sst_aii_wp_write,
 		.name = "SST25WF040",
 	},
 };
@@ -203,7 +181,7 @@ sst_byte_write(struct spi_flash *flash, u32 offset, const void *buf)
 }
 
 static int
-sst_aii_wp_write(struct spi_flash *flash, u32 offset, size_t len, const void *buf)
+sst_write(struct spi_flash *flash, u32 offset, size_t len, const void *buf)
 {
 	size_t actual, cmd_len;
 	int ret;
@@ -260,53 +238,6 @@ sst_aii_wp_write(struct spi_flash *flash, u32 offset, size_t len, const void *bu
 	/* If there is a single trailing byte, write it out */
 	if (!ret && actual != len)
 		ret = sst_byte_write(flash, offset, buf + actual);
-
- done:
-	debug("SF: sst: program %s %zu bytes @ 0x%zx\n",
-	      ret ? "failure" : "success", len, offset - actual);
-
-	spi_release_bus(flash->spi);
-	return ret;
-}
-
-static int
-sst_aii_bp_write(struct spi_flash *flash, u32 offset, size_t len, const void *buf)
-{
-	size_t written, cmd_len;
-	int ret;
-	u8 cmd[4];
-
-	ret = spi_claim_bus(flash->spi);
-	if (ret) {
-		debug("SF: Unable to claim SPI bus\n");
-		return ret;
-	}
-
-	ret = sst_enable_writing(flash);
-	if (ret)
-		goto done;
-
-	cmd_len = 4;
-	cmd[0] = CMD_SST_AAI_BP;
-	cmd[1] = offset >> 16;
-	cmd[2] = offset >> 8;
-	cmd[3] = offset;
-
-	for (written = 0; written < len; written++) {
-		ret = spi_flash_cmd_write(flash->spi, cmd, cmd_len,
-		                          buf + written, 1);
-		if (ret) {
-			debug("SF: sst byte program failed\n");
-			break;
-		}
-		ret = sst_wait_ready(flash, SPI_FLASH_PROG_TIMEOUT);
-		if (ret)
-			break;
-		cmd_len = 1;
-	}
-
-	if (!ret)
-		ret = sst_disable_writing(flash);
 
  done:
 	debug("SF: sst: program %s %zu bytes @ 0x%zx\n",
@@ -409,13 +340,8 @@ spi_flash_probe_sst(struct spi_slave *spi, u8 *idcode)
 
 	for (i = 0; i < ARRAY_SIZE(sst_spi_flash_table); ++i) {
 		params = &sst_spi_flash_table[i];
-#ifndef CONFIG_SPI_FLASH_ALTERNATE_PROBE
 		if (params->idcode1 == idcode[2])
 			break;
-#else
-		if (params->idcode1 == idcode[4])
-			break;
-#endif
 	}
 
 	if (i == ARRAY_SIZE(sst_spi_flash_table)) {
@@ -432,14 +358,15 @@ spi_flash_probe_sst(struct spi_slave *spi, u8 *idcode)
 	stm->params = params;
 	stm->flash.spi = spi;
 	stm->flash.name = params->name;
-	stm->flash.write = params->write;
 
+	stm->flash.write = sst_write;
 	stm->flash.erase = sst_erase;
 	stm->flash.read = sst_read_fast;
 	stm->flash.size = SST_SECTOR_SIZE * params->nr_sectors;
 
-	debug("SF: Detected %s with page size %u, total %u bytes\n",
-	      params->name, SST_SECTOR_SIZE, stm->flash.size);
+	printf("SF: Detected %s with page size %u, total ",
+	       params->name, SST_SECTOR_SIZE);
+	print_size(stm->flash.size, "\n");
 
 	/* Flash powers up read-only, so clear BP# bits */
 	sst_unlock(&stm->flash);

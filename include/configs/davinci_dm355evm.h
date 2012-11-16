@@ -24,7 +24,6 @@
 #define DAVINCI_DM355EVM
 
 #define CONFIG_SKIP_LOWLEVEL_INIT	/* U-Boot is a 3rd stage loader */
-#define CONFIG_SKIP_RELOCATE_UBOOT
 #define CONFIG_SYS_NO_FLASH		/* that is, no *NOR* flash */
 #define CONFIG_SYS_CONSOLE_INFO_QUIET
 #define CONFIG_DISPLAY_CPUINFO
@@ -77,6 +76,13 @@
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_MAX_CHIPS	2
 
+/* SD/MMC */
+#define CONFIG_MMC
+#define CONFIG_GENERIC_MMC
+#define CONFIG_DAVINCI_MMC
+#define CONFIG_DAVINCI_MMC_SD1
+#define CONFIG_MMC_MBLOCK
+
 /* USB: OTG connector */
 /* NYET -- #define CONFIG_USB_DAVINCI */
 
@@ -93,6 +99,13 @@
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
+
+#ifdef CONFIG_MMC
+#define CONFIG_DOS_PARTITION
+#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_FAT
+#define CONFIG_CMD_MMC
+#endif
 
 #ifdef CONFIG_NAND_DAVINCI
 #define CONFIG_CMD_MTDPARTS
@@ -122,7 +135,7 @@
 #define CONFIG_SYS_PROMPT	"DM355 EVM # "	/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size  */
 #define CONFIG_SYS_PBSIZE			/* Print buffer size */ \
-		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
+	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
 #define CONFIG_SYS_MAXARGS	16		/* max number of command args */
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
@@ -135,12 +148,20 @@
 #undef CONFIG_ENV_IS_IN_FLASH
 #endif
 
+#if defined(CONFIG_MMC) && !defined(CONFIG_ENV_IS_IN_NAND)
+#define CONFIG_CMD_ENV
+#define CONFIG_ENV_SIZE		(16 << 10)	/* 16 KiB */
+#define CONFIG_ENV_OFFSET	(51 << 9)	/* Sector 51 */
+#define CONFIG_ENV_IS_IN_MMC
+#undef CONFIG_ENV_IS_IN_FLASH
+#endif
+
 #define CONFIG_BOOTDELAY	5
 #define CONFIG_BOOTCOMMAND \
-		"dhcp;bootm"
+	"dhcp;bootm"
 #define CONFIG_BOOTARGS \
-		"console=ttyS0,115200n8 " \
-		"root=/dev/mmcblk0p1 rootwait rootfstype=ext3 ro"
+	"console=ttyS0,115200n8 " \
+"root=/dev/mmcblk0p1 rootwait rootfstype=ext3 ro"
 
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_VERSION_VARIABLE
@@ -151,7 +172,6 @@
 /* U-Boot memory configuration */
 #define CONFIG_STACKSIZE		(256 << 10)	/* 256 KiB */
 #define CONFIG_SYS_MALLOC_LEN		(1 << 20)	/* 1 MiB */
-#define CONFIG_SYS_GBL_DATA_SIZE	128		/* for initial data */
 #define CONFIG_SYS_MEMTEST_START	0x87000000	/* physical address */
 #define CONFIG_SYS_MEMTEST_END		0x88000000	/* test 16MB RAM */
 
@@ -190,5 +210,11 @@
 
 #define MTDPARTS_DEFAULT	\
 	"mtdparts=davinci_nand.0:" PART_BOOT PART_KERNEL PART_REST
+
+#define CONFIG_MAX_RAM_BANK_SIZE	(256 << 20)	/* 256 MB */
+
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_SP_ADDR		\
+	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
 
 #endif /* __CONFIG_H */

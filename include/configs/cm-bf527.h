@@ -11,7 +11,6 @@
 /*
  * Processor Settings
  */
-#define CONFIG_BFIN_CPU             bf527-0.0
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_PARA
 
 
@@ -37,6 +36,9 @@
 /* SCLK_DIV controls the system clock divider				*/
 /* Values can range from 1-15						*/
 #define CONFIG_SCLK_DIV			4
+
+/* Decrease core voltage */
+#define CONFIG_VR_CTL_VAL (VLEV_120 | CLKBUFOE | FREQ_1000)
 
 
 /*
@@ -105,8 +107,8 @@
 #define CONFIG_ENV_ADDR		0x20008000
 #define CONFIG_ENV_OFFSET	0x8000
 #define CONFIG_ENV_SIZE		0x8000
-#define CONFIG_ENV_SECT_SIZE	0x20000
-#define ENV_IS_EMBEDDED_CUSTOM
+#define CONFIG_ENV_SECT_SIZE	0x8000
+#define CONFIG_ENV_IS_EMBEDDED_IN_LDR
 
 
 /*
@@ -114,8 +116,6 @@
  */
 #define CONFIG_BFIN_TWI_I2C	1
 #define CONFIG_HARD_I2C		1
-#define CONFIG_SYS_I2C_SPEED	50000
-#define CONFIG_SYS_I2C_SLAVE	0
 
 
 /*
@@ -125,6 +125,10 @@
 #define CONFIG_MISC_INIT_R
 #define CONFIG_RTC_BFIN
 #define CONFIG_UART_CONSOLE	0
+#define CONFIG_BOOTCOMMAND	"run flashboot"
+#define FLASHBOOT_ENV_SETTINGS \
+	"flashboot=flread 20040000 1000000 300000;" \
+	"bootm 0x1000000\0"
 
 
 /*

@@ -1,12 +1,6 @@
 /*
- * (C) Copyright 2008-2009 Freescale Semiconductor, Inc.
-
- * (C) Copyright 2000-2006
- * Wolfgang Denk, DENX Software Engineering, w...@denx.de.
+ * (C) Copyright 2008-2010 Freescale Semiconductor, Inc.
  *
- * (C) Copyright 2001 Sysgo Real-Time Solutions, GmbH <www.elinos.com>
- * Andreas Heppel <ahep...@sysgo.de>
-
  * See file CREDITS for list of people who contributed to this
  * project.
  *
@@ -17,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.         See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -35,16 +29,8 @@
 #include <linux/stddef.h>
 #include <malloc.h>
 #include <mmc.h>
-
-#if defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_MMC)
-#define CMD_SAVEENV
-#elif defined(CONFIG_ENV_OFFSET_REDUND)
-#error Cannot use CONFIG_ENV_OFFSET_REDUND without CONFIG_CMD_ENV & CONFIG_CMD_MMC
-#endif
-
-#if defined(CONFIG_ENV_SIZE_REDUND) && (CONFIG_ENV_SIZE_REDUND < CONFIG_ENV_SIZE)
-#error CONFIG_ENV_SIZE_REDUND should not be less then CONFIG_ENV_SIZE
-#endif
+#include <search.h>
+#include <errno.h>
 
 /* references to names in env_common.c */
 extern uchar default_environment[];
@@ -55,7 +41,7 @@ char *env_name_spec = "MMC";
 extern uchar environment[];
 env_t *env_ptr = (env_t *)(&environment[0]);
 #else /* ! ENV_IS_EMBEDDED */
-env_t *env_ptr;
+env_t *env_ptr = NULL;
 #endif /* ENV_IS_EMBEDDED */
 
 /* local functions */
@@ -67,101 +53,115 @@ DECLARE_GLOBAL_DATA_PTR;
 
 uchar env_get_char_spec(int index)
 {
-       return *((uchar *)(gd->env_addr + index));
+	return *((uchar *)(gd->env_addr + index));
 }
 
 int env_init(void)
 {
-       /* use default */
-       gd->env_addr = (ulong)&default_environment[0];
-       gd->env_valid = 1;
+	/* use default */
+	gd->env_addr = (ulong)&default_environment[0];
+	gd->env_valid = 1;
 
-       return 0;
+	return 0;
 }
 
-inline int init_mmc_for_env(struct mmc *mmc)
+int init_mmc_for_env(struct mmc *mmc)
 {
-       if (!mmc) {
-               puts("No MMC card found\n");
-               return -1;
-       }
+	if (!mmc) {
+		puts("No MMC card found\n");
+		return -1;
+	}
 
-       if (mmc_init(mmc)) {
-               puts("MMC init failed\n");
-               return  -1;
-       }
+	if (mmc_init(mmc)) {
+		puts("MMC init failed\n");
+		return  -1;
+	}
 
-       return 0;
+	return 0;
 }
 
-#ifdef CMD_SAVEENV
+#ifdef CONFIG_CMD_SAVEENV
 
 inline int write_env(struct mmc *mmc, unsigned long size,
-                                               unsigned long offset, const void *buffer)
+			unsigned long offset, const void *buffer)
 {
-       uint blk_start = 0, blk_cnt = 0, n = 0;
+	uint blk_start, blk_cnt, n;
 
-       blk_start = (offset % 512) ? ((offset / 512) + 1) : (offset / 512);
-       blk_cnt = (size % 512) ? ((size / 512) + 1) : (size / 512);
-       n = mmc->block_dev.block_write(0, blk_start , blk_cnt, (u_char *)buffer);
+	blk_start = ALIGN(offset, mmc->write_bl_len) / mmc->write_bl_len;
+	blk_cnt   = ALIGN(size, mmc->write_bl_len) / mmc->write_bl_len;
 
-       return (n == blk_cnt) ? 0 : -1;
+	n = mmc->block_dev.block_write(CONFIG_SYS_MMC_ENV_DEV, blk_start,
+					blk_cnt, (u_char *)buffer);
+
+	return (n == blk_cnt) ? 0 : -1;
 }
 
 int saveenv(void)
 {
-       struct mmc *mmc = find_mmc_device(0);
+	env_t	env_new;
+	ssize_t	len;
+	char	*res;
+	struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
 
-       if (init_mmc_for_env(mmc))
-               return 1;
+	if (init_mmc_for_env(mmc))
+		return 1;
 
-       puts("Writing to MMC... ");
-       if (write_env(mmc, CONFIG_ENV_SIZE, \
-                               CONFIG_ENV_OFFSET, env_ptr)) {
-               puts("failed\n");
-               return 1;
-       }
+	res = (char *)&env_new.data;
+	len = hexport('\0', &res, ENV_SIZE);
+	if (len < 0) {
+		error("Cannot export environment: errno = %d\n", errno);
+		return 1;
+	}
+	env_new.crc   = crc32(0, env_new.data, ENV_SIZE);
+	printf("Writing to MMC(%d)... ", CONFIG_SYS_MMC_ENV_DEV);
+	if (write_env(mmc, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, (u_char *)&env_new)) {
+		puts("failed\n");
+		return 1;
+	}
 
-       puts("done\n");
-       return 0;
+	puts("done\n");
+	return 0;
 }
-#endif /* CMD_SAVEENV */
+#endif /* CONFIG_CMD_SAVEENV */
 
 inline int read_env(struct mmc *mmc, unsigned long size,
-                                               unsigned long offset, const void *buffer)
+			unsigned long offset, const void *buffer)
 {
-       uint blk_start = 0, blk_cnt = 0, n = 0;
+	uint blk_start, blk_cnt, n;
 
-       blk_start = (offset % 512) ? ((offset / 512) + 1) : (offset / 512);
-       blk_cnt = (size % 512) ? ((size / 512) + 1) : (size / 512);
+	blk_start = ALIGN(offset, mmc->read_bl_len) / mmc->read_bl_len;
+	blk_cnt   = ALIGN(size, mmc->read_bl_len) / mmc->read_bl_len;
 
-       n = mmc->block_dev.block_read(0, blk_start, blk_cnt, (uchar *)buffer);
+	n = mmc->block_dev.block_read(CONFIG_SYS_MMC_ENV_DEV, blk_start,
+					blk_cnt, (uchar *)buffer);
 
-       return (n == blk_cnt) ? 0 : -1;
+	return (n == blk_cnt) ? 0 : -1;
 }
 
 void env_relocate_spec(void)
 {
 #if !defined(ENV_IS_EMBEDDED)
-       struct mmc *mmc = find_mmc_device(0);
+       char buf[CONFIG_ENV_SIZE];
 
-       if (init_mmc_for_env(mmc))
-               return;
+	struct mmc *mmc = find_mmc_device(CONFIG_SYS_MMC_ENV_DEV);
 
-       if (read_env(mmc, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, env_ptr))
-               return use_default();
+	if (init_mmc_for_env(mmc)) {
+		use_default();
+		return;
+	}
 
-       if (crc32(0, env_ptr->data, ENV_SIZE) != env_ptr->crc)
-               return use_default();
+	if (read_env(mmc, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, buf)) {
+		use_default();
+		return;
+	}
 
-#endif /* ! ENV_IS_EMBEDDED */
+	env_import(buf, 1);
+#endif
 }
 
 #if !defined(ENV_IS_EMBEDDED)
 static void use_default()
 {
-       puts ("*** Warning - bad CRC or MMC, using default environment\n\n");
-       set_default_env();
+	set_default_env(NULL);
 }
 #endif
-

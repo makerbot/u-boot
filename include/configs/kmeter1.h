@@ -30,8 +30,17 @@
 #define CONFIG_KMETER1		1 /* KMETER1 board specific */
 #define CONFIG_HOSTNAME		kmeter1
 
+#define	CONFIG_SYS_TEXT_BASE	0xF0000000
+
 /* include common defines/options for all Keymile boards */
 #include "keymile-common.h"
+
+#define CONFIG_KM_UBI_PARTITION_NAME	"ubi0"
+
+#define MTDIDS_DEFAULT		"nor0=boot"
+#define MTDPARTS_DEFAULT	\
+	"mtdparts=boot:768k(u-boot),128k(env),128k(envred),"	\
+	"-(" CONFIG_KM_UBI_PARTITION_NAME ")"
 
 #define CONFIG_MISC_INIT_R	1
 /*
@@ -70,6 +79,14 @@
  * IMMR new address
  */
 #define CONFIG_SYS_IMMR		0xE0000000
+
+/*
+ * Bus Arbitration Configuration Register (ACR)
+ */
+#define CONFIG_SYS_ACR_PIPE_DEP 3       /* pipeline depth 4 transactions */
+#define CONFIG_SYS_ACR_RPTCNT   3       /* 4 consecutive transactions */
+#define CONFIG_SYS_ACR_APARK    0       /* park bus to master (below) */
+#define CONFIG_SYS_ACR_PARKM    3       /* parking master = QuiccEngine */
 
 /*
  * DDR Setup
@@ -142,9 +159,8 @@
 /*
  * The reserved memory
  */
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE /* start of monitor */
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE /* start of monitor */
 #define CONFIG_SYS_FLASH_BASE		0xF0000000
-#define CONFIG_SYS_FLASH_BASE_1		0xF2000000
 #define CONFIG_SYS_PIGGY_BASE		0xE8000000
 #define	CONFIG_SYS_PIGGY_SIZE		128
 #define CONFIG_SYS_PAXE_BASE		0xA0000000
@@ -163,9 +179,8 @@
  */
 #define CONFIG_SYS_INIT_RAM_LOCK	1
 #define CONFIG_SYS_INIT_RAM_ADDR	0xE6000000 /* Initial RAM address */
-#define CONFIG_SYS_INIT_RAM_END	0x1000 /* End of used area in RAM */
-#define CONFIG_SYS_GBL_DATA_SIZE	0x100 /* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE	0x1000 /* Size of used area in RAM */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /*
  * Local Bus Configuration & Clock Setup
@@ -205,9 +220,9 @@
 				OR_GPCM_SCY_5 | \
 				OR_GPCM_TRLX | OR_GPCM_EAD)
 
-#define CONFIG_SYS_MAX_FLASH_BANKS	2	/* max num of flash banks	*/
+#define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max num of flash banks	*/
 #define CONFIG_SYS_MAX_FLASH_SECT	512	/* max num of sects on one chip */
-#define CONFIG_SYS_FLASH_BANKS_LIST { CONFIG_SYS_FLASH_BASE, CONFIG_SYS_FLASH_BASE_1 }
+#define CONFIG_SYS_FLASH_BANKS_LIST { CONFIG_SYS_FLASH_BASE }
 
 #undef	CONFIG_SYS_FLASH_CHECKSUM
 
@@ -243,7 +258,6 @@
  * Serial Port
  */
 #define CONFIG_CONS_INDEX	1
-#undef	CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -270,7 +284,7 @@
  * QE UEC ethernet configuration
  */
 #define CONFIG_UEC_ETH
-#define CONFIG_ETHPRIME		"FSL UEC0"
+#define CONFIG_ETHPRIME		"UEC0"
 
 #define CONFIG_UEC_ETH1		/* GETH1 */
 #define UEC_VERBOSE_DEBUG	1
@@ -281,7 +295,8 @@
 #define CONFIG_SYS_UEC1_TX_CLK		QE_CLK17
 #define CONFIG_SYS_UEC1_ETH_TYPE	FAST_ETH
 #define CONFIG_SYS_UEC1_PHY_ADDR	0
-#define CONFIG_SYS_UEC1_INTERFACE_MODE ENET_100_RMII
+#define CONFIG_SYS_UEC1_INTERFACE_TYPE RMII
+#define CONFIG_SYS_UEC1_INTERFACE_SPEED 100
 #endif
 
 /*
@@ -343,16 +358,17 @@
 
 /*
  * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
+ * have to be in the first 256 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ		(8 << 20) /* Initial Memory map for Linux */
+#define CONFIG_SYS_BOOTMAPSZ		(256 << 20) /* Initial Memory map for Linux */
 
 /*
  * Core HID Setup
  */
 #define CONFIG_SYS_HID0_INIT		0x000000000
-#define CONFIG_SYS_HID0_FINAL		HID0_ENABLE_MACHINE_CHECK
+#define CONFIG_SYS_HID0_FINAL		(HID0_ENABLE_MACHINE_CHECK | \
+					 HID0_ENABLE_INSTRUCTION_CACHE)
 #define CONFIG_SYS_HID2			HID2_HBE
 
 /*
@@ -425,22 +441,9 @@
 #define CONFIG_SYS_DBAT7U	CONFIG_SYS_IBAT7U
 #endif /* CONFIG_PCI */
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01 /* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM	0x02 /* Software reboot */
-
 #define BOOTFLASH_START	F0000000
 
 #define CONFIG_PRAM	512	/* protected RAM [KBytes] */
-
-#define MTDIDS_DEFAULT		"nor2=app"
-#define MTDPARTS_DEFAULT \
-	"mtdparts=app:256k(u-boot),128k(env),128k(envred),"	\
-	"1536k(esw0),8704k(rootfs0),1536k(esw1),2432k(rootfs1),640k(var),768k(cfg)"
 
 /*
  * Environment Configuration

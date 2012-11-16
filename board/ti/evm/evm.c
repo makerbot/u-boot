@@ -37,14 +37,74 @@
 #include <asm/mach-types.h>
 #include "evm.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
+static u32 omap3_evm_version;
+
+u32 get_omap3_evm_rev(void)
+{
+	return omap3_evm_version;
+}
+
+static void omap3_evm_get_revision(void)
+{
+#if defined(CONFIG_CMD_NET)
+	/*
+	 * Board revision can be ascertained only by identifying
+	 * the Ethernet chipset.
+	 */
+	unsigned int smsc_id;
+
+	/* Ethernet PHY ID is stored at ID_REV register */
+	smsc_id = readl(CONFIG_SMC911X_BASE + 0x50) & 0xFFFF0000;
+	printf("Read back SMSC id 0x%x\n", smsc_id);
+
+	switch (smsc_id) {
+	/* SMSC9115 chipset */
+	case 0x01150000:
+		omap3_evm_version = OMAP3EVM_BOARD_GEN_1;
+		break;
+	/* SMSC 9220 chipset */
+	case 0x92200000:
+	default:
+		omap3_evm_version = OMAP3EVM_BOARD_GEN_2;
+       }
+#else
+#if defined(CONFIG_STATIC_BOARD_REV)
+	/*
+	 * Look for static defintion of the board revision
+	 */
+	omap3_evm_version = CONFIG_STATIC_BOARD_REV;
+#else
+	/*
+	 * Fallback to the default above.
+	 */
+	omap3_evm_version = OMAP3EVM_BOARD_GEN_2;
+#endif
+#endif	/* CONFIG_CMD_NET */
+}
+
+#ifdef CONFIG_USB_OMAP3
+/*
+ * MUSB port on OMAP3EVM Rev >= E requires extvbus programming.
+ */
+u8 omap3_evm_need_extvbus(void)
+{
+	u8 retval = 0;
+
+	if (get_omap3_evm_rev() >= OMAP3EVM_BOARD_GEN_2)
+		retval = 1;
+
+	return retval;
+}
+#endif
+
 /*
  * Routine: board_init
  * Description: Early hardware init.
  */
 int board_init(void)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	gpmc_init(); /* in SRAM or SDRAM, finish GPMC */
 	/* board id for Linux */
 	gd->bd->bi_arch_number = MACH_TYPE_OMAP3EVM;
@@ -68,6 +128,7 @@ int misc_init_r(void)
 #if defined(CONFIG_CMD_NET)
 	setup_net_chip();
 #endif
+	omap3_evm_get_revision();
 
 	dieid_num_r();
 

@@ -72,7 +72,6 @@
  */
 #define CONFIG_ENV_SIZE             SZ_128K     /* Total Size of Environment Sector */
 #define CONFIG_SYS_MALLOC_LEN           (CONFIG_ENV_SIZE + SZ_128K)
-#define CONFIG_SYS_GBL_DATA_SIZE        128  /* size in bytes reserved for initial data */
 
 /*
  * Hardware drivers
@@ -81,7 +80,8 @@
 /*
  * SMC91c96 Etherent
  */
-#define CONFIG_DRIVER_LAN91C96
+#define CONFIG_NET_MULTI
+#define CONFIG_LAN91C96
 #define CONFIG_LAN91C96_BASE     (H4_CS1_BASE+0x300)
 #define CONFIG_LAN91C96_EXT_PHY
 
@@ -163,14 +163,12 @@
 /*
  * Miscellaneous configurable options
  */
-#ifdef CONFIG_APTIX
-#define V_PROMPT                 "OMAP2420 Aptix # "
-#else
-#define V_PROMPT                 "OMAP242x H4 # "
-#endif
-
 #define CONFIG_SYS_LONGHELP             /* undef to save memory */
-#define CONFIG_SYS_PROMPT               V_PROMPT
+#ifdef CONFIG_APTIX
+# define CONFIG_SYS_PROMPT		"OMAP2420 Aptix # "
+#else
+# define CONFIG_SYS_PROMPT		"OMAP242x H4 # "
+#endif
 #define CONFIG_SYS_CBSIZE               256  /* Console I/O Buffer Size */
 /* Print Buffer Size */
 #define CONFIG_SYS_PBSIZE               (CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16)

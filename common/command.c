@@ -34,7 +34,7 @@
  */
 
 int _do_help (cmd_tbl_t *cmd_start, int cmd_items, cmd_tbl_t * cmdtp, int
-	      flag, int argc, char *argv[])
+	      flag, int argc, char * const argv[])
 {
 	int i;
 	int rcode = 0;
@@ -108,6 +108,8 @@ cmd_tbl_t *find_cmd_tbl (const char *cmd, cmd_tbl_t *table, int table_len)
 	int len;
 	int n_found = 0;
 
+	if (!cmd)
+		return NULL;
 	/*
 	 * Some commands allow length modifiers (like "cp.b");
 	 * compare command name only until first dot.
@@ -153,13 +155,14 @@ int cmd_usage(cmd_tbl_t *cmdtp)
 	puts (cmdtp->help);
 	putc ('\n');
 #endif	/* CONFIG_SYS_LONGHELP */
-	return 0;
+	return 1;
 }
 
 #ifdef CONFIG_AUTO_COMPLETE
 
-int var_complete(int argc, char *argv[], char last_char, int maxv, char *cmdv[])
+int var_complete(int argc, char * const argv[], char last_char, int maxv, char *cmdv[])
 {
+#if 0 /* need to reimplement */
 	static char tmp_buf[512];
 	int space;
 
@@ -170,12 +173,12 @@ int var_complete(int argc, char *argv[], char last_char, int maxv, char *cmdv[])
 
 	if (!space && argc == 2)
 		return env_complete(argv[1], maxv, cmdv, sizeof(tmp_buf), tmp_buf);
-
+#endif
 	return 0;
 }
 
 static void install_auto_complete_handler(const char *cmd,
-		int (*complete)(int argc, char *argv[], char last_char, int maxv, char *cmdv[]))
+		int (*complete)(int argc, char * const argv[], char last_char, int maxv, char *cmdv[]))
 {
 	cmd_tbl_t *cmdtp;
 
@@ -188,6 +191,9 @@ static void install_auto_complete_handler(const char *cmd,
 
 void install_auto_complete(void)
 {
+#if defined(CONFIG_CMD_EDITENV)
+	install_auto_complete_handler("editenv", var_complete);
+#endif
 	install_auto_complete_handler("printenv", var_complete);
 	install_auto_complete_handler("setenv", var_complete);
 #if defined(CONFIG_CMD_RUN)
@@ -197,7 +203,7 @@ void install_auto_complete(void)
 
 /*************************************************************************************/
 
-static int complete_cmdv(int argc, char *argv[], char last_char, int maxv, char *cmdv[])
+static int complete_cmdv(int argc, char * const argv[], char last_char, int maxv, char *cmdv[])
 {
 	cmd_tbl_t *cmdtp;
 	const char *p;
@@ -298,7 +304,7 @@ static int make_argv(char *s, int argvsz, char *argv[])
 	return argc;
 }
 
-static void print_argv(const char *banner, const char *leader, const char *sep, int linemax, char *argv[])
+static void print_argv(const char *banner, const char *leader, const char *sep, int linemax, char * const argv[])
 {
 	int ll = leader != NULL ? strlen(leader) : 0;
 	int sl = sep != NULL ? strlen(sep) : 0;
@@ -325,7 +331,7 @@ static void print_argv(const char *banner, const char *leader, const char *sep, 
 	printf("\n");
 }
 
-static int find_common_prefix(char *argv[])
+static int find_common_prefix(char * const argv[])
 {
 	int i, len;
 	char *anchor, *s, *t;
@@ -459,5 +465,42 @@ int cmd_get_data_size(char* arg, int default_size)
 		}
 	}
 	return default_size;
+}
+#endif
+
+#if defined(CONFIG_NEEDS_MANUAL_RELOC)
+DECLARE_GLOBAL_DATA_PTR;
+
+void fixup_cmdtable(cmd_tbl_t *cmdtp, int size)
+{
+	int	i;
+
+	if (gd->reloc_off == 0)
+		return;
+
+	for (i = 0; i < size; i++) {
+		ulong addr;
+
+		addr = (ulong) (cmdtp->cmd) + gd->reloc_off;
+#if DEBUG_COMMANDS
+		printf("Command \"%s\": 0x%08lx => 0x%08lx\n",
+		       cmdtp->name, (ulong) (cmdtp->cmd), addr);
+#endif
+		cmdtp->cmd =
+			(int (*)(struct cmd_tbl_s *, int, int, char * const []))addr;
+		addr = (ulong)(cmdtp->name) + gd->reloc_off;
+		cmdtp->name = (char *)addr;
+		if (cmdtp->usage) {
+			addr = (ulong)(cmdtp->usage) + gd->reloc_off;
+			cmdtp->usage = (char *)addr;
+		}
+#ifdef	CONFIG_SYS_LONGHELP
+		if (cmdtp->help) {
+			addr = (ulong)(cmdtp->help) + gd->reloc_off;
+			cmdtp->help = (char *)addr;
+		}
+#endif
+		cmdtp++;
+	}
 }
 #endif

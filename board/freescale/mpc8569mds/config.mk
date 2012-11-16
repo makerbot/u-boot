@@ -23,4 +23,8 @@
 #
 # mpc8569mds board
 #
-TEXT_BASE = 0xfff80000
+ifndef NAND_SPL
+ifeq ($(CONFIG_NAND), y)
+LDSCRIPT := $(TOPDIR)/$(CPUDIR)/u-boot-nand.lds
+endif
+endif

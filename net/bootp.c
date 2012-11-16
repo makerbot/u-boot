@@ -20,8 +20,6 @@
 
 #define BOOTP_VENDOR_MAGIC	0x63825363	/* RFC1048 Magic Cookie		*/
 
-#if defined(CONFIG_CMD_NET)
-
 #define TIMEOUT		5000UL	/* Milliseconds before trying BOOTP again */
 #ifndef CONFIG_NET_RETRY_COUNT
 # define TIMEOUT_COUNT	5		/* # of timeouts before giving up  */
@@ -458,6 +456,10 @@ static int DhcpExtended (u8 * e, int message_type, IPaddr_t ServerID, IPaddr_t R
 	*e++  = 42;
 	*cnt += 1;
 #endif
+	/* no options, so back up to avoid sending an empty request list */
+	if (*cnt == 0)
+		e -= 2;
+
 	*e++  = 255;		/* End of the list */
 
 	/* Pad to minimal length */
@@ -948,5 +950,3 @@ void DhcpRequest(void)
 	BootpRequest();
 }
 #endif	/* CONFIG_CMD_DHCP */
-
-#endif	/* CONFIG_CMD_NET */

@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2001-2004
+ * (C) Copyright 2001-2010
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -26,7 +26,6 @@
 #include <net.h>
 #include <miiphy.h>
 
-#ifdef CONFIG_CMD_NET
 void eth_parse_enetaddr(const char *addr, uchar *enetaddr)
 {
 	char *end;
@@ -60,9 +59,16 @@ int eth_getenv_enetaddr_by_index(int index, uchar *enetaddr)
 	sprintf(enetvar, index ? "eth%daddr" : "ethaddr", index);
 	return eth_getenv_enetaddr(enetvar, enetaddr);
 }
-#endif
 
-#if defined(CONFIG_CMD_NET) && defined(CONFIG_NET_MULTI)
+#ifdef CONFIG_NET_MULTI
+
+static int eth_mac_skip(int index)
+{
+	char enetvar[15];
+	char *skip_state;
+	sprintf(enetvar, index ? "eth%dmacskip" : "ethmacskip", index);
+	return ((skip_state = getenv(enetvar)) != NULL);
+}
 
 /*
  * CPU and board-specific Ethernet initializations.  Aliased function
@@ -96,7 +102,7 @@ struct eth_device *eth_get_dev(void)
 	return eth_current;
 }
 
-struct eth_device *eth_get_dev_by_name(char *devname)
+struct eth_device *eth_get_dev_by_name(const char *devname)
 {
 	struct eth_device *dev, *target_dev;
 
@@ -175,7 +181,8 @@ int eth_register(struct eth_device* dev)
 		}
 #endif
 	} else {
-		for (d=eth_devices; d->next!=eth_devices; d=d->next);
+		for (d=eth_devices; d->next!=eth_devices; d=d->next)
+			;
 		d->next = dev;
 	}
 
@@ -197,10 +204,18 @@ int eth_initialize(bd_t *bis)
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 	miiphy_init();
 #endif
-	/* Try board-specific initialization first.  If it fails or isn't
-	 * present, try the cpu-specific initialization */
-	if (board_eth_init(bis) < 0)
-		cpu_eth_init(bis);
+	/*
+	 * If board-specific initialization exists, call it.
+	 * If not, call a CPU-specific one
+	 */
+	if (board_eth_init != __def_eth_init) {
+		if (board_eth_init(bis) < 0)
+			printf("Board Net Initialization Failed\n");
+	} else if (cpu_eth_init != __def_eth_init) {
+		if (cpu_eth_init(bis) < 0)
+			printf("CPU Net Initialization Failed\n");
+	} else
+		printf("Net Initialization Skipped\n");
 
 #if defined(CONFIG_DB64360) || defined(CONFIG_CPCI750)
 	mv6436x_eth_initialize(bis);
@@ -227,6 +242,9 @@ int eth_initialize(bd_t *bis)
 				puts (" [PRIME]");
 			}
 
+			if (strchr(dev->name, ' '))
+				puts("\nWarning: eth device name has a space!\n");
+
 			eth_getenv_enetaddr_by_index(eth_number, env_enetaddr);
 
 			if (memcmp(env_enetaddr, "\0\0\0\0\0\0", 6)) {
@@ -243,12 +261,16 @@ int eth_initialize(bd_t *bis)
 
 				memcpy(dev->enetaddr, env_enetaddr, 6);
 			}
+			if (dev->write_hwaddr &&
+				!eth_mac_skip(eth_number) &&
+				is_valid_ether_addr(dev->enetaddr)) {
+				dev->write_hwaddr(dev);
+			}
 
 			eth_number++;
 			dev = dev->next;
 		} while(dev != eth_devices);
 
-#ifdef CONFIG_NET_MULTI
 		/* update current ethernet name */
 		if (eth_current) {
 			char *act = getenv("ethact");
@@ -256,7 +278,6 @@ int eth_initialize(bd_t *bis)
 				setenv("ethact", eth_current->name);
 		} else
 			setenv("ethact", NULL);
-#endif
 
 		putc ('\n');
 	}
@@ -426,7 +447,7 @@ int eth_receive(volatile void *packet, int length)
 void eth_try_another(int first_restart)
 {
 	static struct eth_device *first_failed = NULL;
-	char *ethrotate;
+	char *ethrotate, *act;
 
 	/*
 	 * Do not rotate between network interfaces when
@@ -445,21 +466,16 @@ void eth_try_another(int first_restart)
 
 	eth_current = eth_current->next;
 
-#ifdef CONFIG_NET_MULTI
 	/* update current ethernet name */
-	{
-		char *act = getenv("ethact");
-		if (act == NULL || strcmp(act, eth_current->name) != 0)
-			setenv("ethact", eth_current->name);
-	}
-#endif
+	act = getenv("ethact");
+	if (act == NULL || strcmp(act, eth_current->name) != 0)
+		setenv("ethact", eth_current->name);
 
 	if (first_failed == eth_current) {
 		NetRestartWrap = 1;
 	}
 }
 
-#ifdef CONFIG_NET_MULTI
 void eth_set_current(void)
 {
 	static char *act = NULL;
@@ -486,13 +502,13 @@ void eth_set_current(void)
 
 	setenv("ethact", eth_current->name);
 }
-#endif
 
 char *eth_get_name (void)
 {
 	return (eth_current ? eth_current->name : "unknown");
 }
-#elif defined(CONFIG_CMD_NET) && !defined(CONFIG_NET_MULTI)
+
+#else /* !CONFIG_NET_MULTI */
 
 #warning Ethernet driver is deprecated.  Please update to use CONFIG_NET_MULTI
 

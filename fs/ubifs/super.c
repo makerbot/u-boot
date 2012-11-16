@@ -824,7 +824,7 @@ out_free:
  * through mounting (error path cleanup function). So it has to make sure the
  * resource was actually allocated before freeing it.
  */
-static void ubifs_umount(struct ubifs_info *c)
+void ubifs_umount(struct ubifs_info *c)
 {
 	dbg_gen("un-mounting UBI device %d, volume %d", c->vi.ubi_num,
 		c->vi.vol_id);
@@ -1178,6 +1178,7 @@ int ubifs_mount(char *vol_name)
 		ubifs_umount(ubifs_sb->s_fs_info);
 
 	INIT_LIST_HEAD(&ubifs_infos);
+	INIT_LIST_HEAD(&ubifs_fs_type.fs_supers);
 
 	/*
 	 * Mount in read-only mode

@@ -11,7 +11,6 @@
 /*
  * Processor Settings
  */
-#define CONFIG_BFIN_CPU             bf533-0.3
 #define CONFIG_BFIN_BOOT_MODE       BFIN_BOOT_BYPASS
 
 
@@ -37,6 +36,9 @@
 /* SCLK_DIV controls the system clock divider				*/
 /* Values can range from 1-15						*/
 #define CONFIG_SCLK_DIV			5
+
+/* Decrease core voltage */
+#define CONFIG_VR_CTL_VAL (VLEV_115 | GAIN_20 | FREQ_1000)
 
 
 /*
@@ -93,6 +95,8 @@
  */
 #define CONFIG_BAUDRATE		115200
 #define CONFIG_UART_CONSOLE	0
+#define CONFIG_BOOTCOMMAND	"run flashboot"
+#define FLASHBOOT_ENV_SETTINGS	"flashboot=bootm 0x20040000\0"
 
 
 /*

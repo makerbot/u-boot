@@ -39,6 +39,10 @@
 #define CONFIG_405EX		1		/* Specifc 405EX support*/
 #define CONFIG_SYS_CLK_FREQ	33333333	/* ext frequency to pll	*/
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFFFA0000
+#endif
+
 /*
  * Include common defines/options for all AMCC eval boards
  */
@@ -47,6 +51,7 @@
 
 #define CONFIG_BOARD_EARLY_INIT_F 1		/* Call board_early_init_f */
 #define CONFIG_MISC_INIT_R	1		/* Call misc_init_r	*/
+#define CONFIG_BOARD_TYPES
 #define CONFIG_BOARD_EMAC_COUNT
 
 /*-----------------------------------------------------------------------
@@ -56,7 +61,6 @@
 #define CONFIG_SYS_FLASH_BASE		0xFC000000
 #define CONFIG_SYS_NAND_ADDR		0xF8000000
 #define CONFIG_SYS_FPGA_BASE		0xF0000000
-#define CONFIG_SYS_PERIPHERAL_BASE	0xEF600000      /* internal peripherals*/
 
 /*-----------------------------------------------------------------------
  * Initial RAM & Stack Pointer Configuration Options
@@ -88,9 +92,8 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	(CONFIG_SYS_SDRAM_BASE + (32 << 20))	/* 32 MiB */
 #endif /* defined(CONFIG_SYS_INIT_DCACHE_CS) */
 
-#define CONFIG_SYS_INIT_RAM_END        (4 << 10)			/*  4 KiB */
-#define CONFIG_SYS_GBL_DATA_SIZE	256		/* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE        (4 << 10)			/*  4 KiB */
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /*
  * If the data cache is being used for the primordial stack and global
@@ -102,11 +105,10 @@
 
 #if defined(CONFIG_SYS_INIT_DCACHE_CS)
 # define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-# define CONFIG_SYS_POST_ALT_WORD_ADDR	(CONFIG_SYS_PERIPHERAL_BASE + GPT0_COMP6)
+# define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_PERIPHERAL_BASE + GPT0_COMP6)
 #else
 # define CONFIG_SYS_INIT_EXTRA_SIZE	16
 # define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - CONFIG_SYS_INIT_EXTRA_SIZE)
-# define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 4)
 # define CONFIG_SYS_OCM_DATA_ADDR	CONFIG_SYS_INIT_RAM_ADDR
 #endif /* defined(CONFIG_SYS_INIT_DCACHE_CS) */
 
@@ -114,8 +116,7 @@
  * Serial Port
  *----------------------------------------------------------------------*/
 #define CONFIG_SYS_EXT_SERIAL_CLOCK	11059200	/* ext. 11.059MHz clk	*/
-/* define this if you want console on UART1 */
-#undef CONFIG_UART1_CONSOLE
+#define CONFIG_CONS_INDEX	1	/* Use UART0			*/
 
 /*-----------------------------------------------------------------------
  * Environment
@@ -229,7 +230,7 @@
  *       SDRAM Controller DDR autocalibration values and takes a lot longer
  *       to run than Method_B.
  * (See the Method_A and Method_B algorithm discription in the file:
- *	cpu/ppc4xx/4xx_ibm_ddr2_autocalib.c)
+ *	arch/powerpc/cpu/ppc4xx/4xx_ibm_ddr2_autocalib.c)
  * Define CONFIG_PPC4xx_DDR_METHOD_A to use DDR autocalibration Method_A
  *
  * DDR Autocalibration Method_B is the default.
@@ -459,7 +460,8 @@
 				 CONFIG_SYS_POST_UART)
 
 /* Define here the base-addresses of the UARTs to test in POST */
-#define CONFIG_SYS_POST_UART_TABLE	{UART0_BASE, UART1_BASE}
+#define CONFIG_SYS_POST_UART_TABLE	{ CONFIG_SYS_NS16550_COM1, \
+			CONFIG_SYS_NS16550_COM2 }
 
 #define CONFIG_LOGBUFFER
 #define CONFIG_SYS_POST_CACHE_ADDR	0x00800000 /* free virtual address	*/
@@ -520,9 +522,22 @@
 #define CONFIG_SYS_EBC_PB1CR		(CONFIG_SYS_NAND_ADDR | 0x1e000)
 #endif
 
-/* Memory Bank 2 (FPGA) initialization						*/
-#define CONFIG_SYS_EBC_PB2AP           0x9400C800
-#define CONFIG_SYS_EBC_PB2CR		(CONFIG_SYS_FPGA_BASE | 0x18000)
+/* Memory Bank 2 (FPGA) initialization					*/
+#define CONFIG_SYS_EBC_PB2AP		(EBC_BXAP_BME_ENABLED |		\
+					 EBC_BXAP_FWT_ENCODE(6) |	\
+					 EBC_BXAP_BWT_ENCODE(1) |	\
+					 EBC_BXAP_BCE_DISABLE |		\
+					 EBC_BXAP_BCT_2TRANS |		\
+					 EBC_BXAP_CSN_ENCODE(0) |	\
+					 EBC_BXAP_OEN_ENCODE(0) |	\
+					 EBC_BXAP_WBN_ENCODE(3) |	\
+					 EBC_BXAP_WBF_ENCODE(1) |	\
+					 EBC_BXAP_TH_ENCODE(4) |	\
+					 EBC_BXAP_RE_DISABLED |		\
+					 EBC_BXAP_SOR_DELAYED |		\
+					 EBC_BXAP_BEM_WRITEONLY |	\
+					 EBC_BXAP_PEN_DISABLED)
+#define CONFIG_SYS_EBC_PB2CR	(CONFIG_SYS_FPGA_BASE | 0x18000)
 
 #define CONFIG_SYS_EBC_CFG		0x7FC00000 /*  EBC0_CFG */
 
@@ -571,7 +586,7 @@
  * Some Kilauea stuff..., mainly fpga registers
  */
 #define CONFIG_SYS_FPGA_REG_BASE		CONFIG_SYS_FPGA_BASE
-#define CONFIG_SYS_FPGA_FIFO_BASE		(in32(CONFIG_SYS_FPGA_BASE) | (1 << 10))
+#define CONFIG_SYS_FPGA_FIFO_BASE		(CONFIG_SYS_FPGA_BASE | (1 << 10))
 
 /* interrupt */
 #define CONFIG_SYS_FPGA_SLIC0_R_DPRAM_INT	0x80000000
@@ -601,5 +616,9 @@
 #define CONFIG_SYS_FPGA_SLIC1_CS		0x00000400
 #define CONFIG_SYS_FPGA_USER_LED0		0x00000200
 #define CONFIG_SYS_FPGA_USER_LED1		0x00000100
+
+#define CONFIG_SYS_FPGA_MAGIC_MASK		0xffff0000
+#define CONFIG_SYS_FPGA_MAGIC			0xabcd0000
+#define CONFIG_SYS_FPGA_VER_MASK		0x0000ff00
 
 #endif	/* __CONFIG_H */

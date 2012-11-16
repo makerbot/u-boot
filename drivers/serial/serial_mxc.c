@@ -18,6 +18,7 @@
  */
 
 #include <common.h>
+#include <watchdog.h>
 #ifdef CONFIG_MX31
 #include <asm/arch/mx31.h>
 #else
@@ -27,15 +28,15 @@
 
 #define __REG(x)     (*((volatile u32 *)(x)))
 
-#ifdef CONFIG_SYS_MX31_UART1
+#if defined(CONFIG_SYS_MX31_UART1) || defined(CONFIG_SYS_MX25_UART1)
 #define UART_PHYS 0x43f90000
-#elif defined(CONFIG_SYS_MX31_UART2)
+#elif defined(CONFIG_SYS_MX31_UART2) || defined(CONFIG_SYS_MX25_UART2)
 #define UART_PHYS 0x43f94000
-#elif defined(CONFIG_SYS_MX31_UART3)
+#elif defined(CONFIG_SYS_MX31_UART3) || defined(CONFIG_SYS_MX25_UART3)
 #define UART_PHYS 0x5000c000
-#elif defined(CONFIG_SYS_MX31_UART4)
+#elif defined(CONFIG_SYS_MX31_UART4) || defined(CONFIG_SYS_MX25_UART4)
 #define UART_PHYS 0x43fb0000
-#elif defined(CONFIG_SYS_MX31_UART5)
+#elif defined(CONFIG_SYS_MX31_UART5) || defined(CONFIG_SYS_MX25_UART5)
 #define UART_PHYS 0x43fb4000
 #elif defined(CONFIG_SYS_MX27_UART1)
 #define UART_PHYS 0x1000a000
@@ -49,8 +50,18 @@
 #define UART_PHYS 0x1001b000
 #elif defined(CONFIG_SYS_MX27_UART6)
 #define UART_PHYS 0x1001c000
+#elif defined(CONFIG_SYS_MX51_UART1)
+#define UART_PHYS UART1_BASE_ADDR
+#elif defined(CONFIG_SYS_MX51_UART2)
+#define UART_PHYS UART2_BASE_ADDR
+#elif defined(CONFIG_SYS_MX51_UART3)
+#define UART_PHYS UART3_BASE_ADDR
 #else
-#error "define CONFIG_SYS_MX31_UARTx to use the mx31 UART driver"
+#error "define CONFIG_SYS_MXxx_UARTx to use the MXC UART driver"
+#endif
+
+#ifdef CONFIG_SERIAL_MULTI
+#warning "MXC driver does not support MULTI serials."
 #endif
 
 /* Register definitions */
@@ -166,11 +177,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void serial_setbrg (void)
 {
-#ifdef CONFIG_MX31
-	u32 clk = mx31_get_ipg_clk();
-#else
-	u32 clk = imx_get_perclk1();
-#endif
+	u32 clk = imx_get_uartclk();
 
 	if (!gd->baudrate)
 		gd->baudrate = CONFIG_BAUDRATE;
@@ -183,7 +190,8 @@ void serial_setbrg (void)
 
 int serial_getc (void)
 {
-	while (__REG(UART_PHYS + UTS) & UTS_RXEMPTY);
+	while (__REG(UART_PHYS + UTS) & UTS_RXEMPTY)
+		WATCHDOG_RESET();
 	return (__REG(UART_PHYS + URXD) & URXD_RX_DATA); /* mask out status from upper word */
 }
 
@@ -192,7 +200,8 @@ void serial_putc (const char c)
 	__REG(UART_PHYS + UTXD) = c;
 
 	/* wait for transmitter to be ready */
-	while(!(__REG(UART_PHYS + UTS) & UTS_TXEMPTY));
+	while (!(__REG(UART_PHYS + UTS) & UTS_TXEMPTY))
+		WATCHDOG_RESET();
 
 	/* If \n, also do \r */
 	if (c == '\n')
