@@ -1,0 +1,33 @@
+AM1808 initialization passed!
+Booting TI User Boot Loader
+        UBL Version: 1.65
+        UBL Flashtype: NAND
+Starting NAND Copy...
+Valid magicnum, 0xA1ACED11, found in block 0x00000006.
+   DONE
+Jumping to entry point at 0xC1080000.
+NAND:  nand_get_flash_type: unknown NAND device: Manufacturer ID: 0x2c, Chip ID: 0x48
+No NAND device found!!!
+0 MiB
+*** Warning - readenv() failed, using default environment
+
+In:    serial
+Out:   serial
+Err:   serial
+ARM Clock : 300000000 Hz
+DDR Clock : 150000000 Hz
+SF: Unsupported manufacturer ff
+ Error - unable to probe SPI flash.
+Invalid MAC address read.
+Net:   No ETH PHY detected!!!
+Error: Ethernet init failed!
+Board Net Initialization Failed
+DaVinci-EMAC
+Hit any key to stop autoboot:  0 
+Unknown command 'mmc' - try 'help'
+Unknown command 'sf' - try 'help'
+Unknown command 'sf' - try 'help'
+Wrong Image Format for bootm command
+ERROR: can't get kernel image!
+Manhattan > 
+
