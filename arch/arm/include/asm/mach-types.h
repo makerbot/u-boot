@@ -3089,7 +3089,7 @@ extern unsigned int __machine_arch_type;
 # define machine_is_davinci_evm()	(0)
 #endif
 
-#ifdef CONFIG_DAVINCI_MACH_MANHATTAN_A07
+#ifdef CONFIG_MACH_DAVINCI_MANHATTAN_A07
 # ifdef machine_arch_type
 #  undef machine_arch_type
 #  define machine_arch_type	__machine_arch_type

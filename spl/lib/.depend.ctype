@@ -1,2 +1,0 @@
-/home/alison/Makerbot/Birdwing-toolchain/u-boot/spl/lib/ctype.o: ctype.c \
-  /home/alison/Makerbot/Birdwing-toolchain/u-boot/include/linux/ctype.h

@@ -481,7 +481,7 @@ enum davinci_clk_ids {
 	DAVINCI_AUXCLK_CLKID			= 0x101,
 };
 
-#define DAVINCI_UART2_CLKID	(cpu_is_da830() ? DAVINCI_PLL0_SYSCLK2 \
+#define DAVINCI_UART1_CLKID	(cpu_is_da830() ? DAVINCI_PLL0_SYSCLK2 \
 						: get_async3_src())
 
 #define DAVINCI_SPI1_CLKID	(cpu_is_da830() ? DAVINCI_PLL0_SYSCLK2 \
