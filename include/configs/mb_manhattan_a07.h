@@ -43,9 +43,7 @@
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_BOARD_EARLY_INIT_F
-/*
 #define CONFIG_AIS_CONFIG_FILE		"board/$(BOARDDIR)/hawkboard-ais-nand.cfg"
-*/
 
 #define CONFIG_SYS_DA850_SYSCFG_SUSPSRC (	\
 	DAVINCI_SYSCFG_SUSPSRC_EMAC |		\
@@ -66,19 +64,17 @@
 */
 
 /* Spl */
-/*
+
 #define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
 #define CONFIG_SPL_NAND_SUPPORT
 #define CONFIG_SPL_NAND_SIMPLE
-#define CONFIG_SPL_LIBGENERIC_SUPPORT	*//* for udelay and __div64_32 for NAND */
-/*
+#define CONFIG_SPL_LIBGENERIC_SUPPORT /* for udelay and __div64_32 for NAND */
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_LDSCRIPT		"board/$(BOARDDIR)/u-boot-spl-hawk.lds"
 #define CONFIG_SPL_TEXT_BASE		0xc1080000
 #define CONFIG_SPL_STACK		CONFIG_SYS_INIT_SP_ADDR
-*/
 
 /*
  * Memory Info

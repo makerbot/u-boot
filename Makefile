@@ -393,7 +393,8 @@ ALL-y += $(obj)u-boot-nodtb-tegra.bin
 endif
 endif
 
-all:		$(ALL-y) $(SUBDIR_EXAMPLES)
+all:		$(ALL-y)
+#$(SUBDIR_EXAMPLES)
 
 $(obj)u-boot.dtb:	$(obj)u-boot
 		$(MAKE) -C dts binary
