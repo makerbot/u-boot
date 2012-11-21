@@ -1,3 +1,4 @@
+AM1808 initialization passed!
 Booting TI User Boot Loader
         UBL Version: 1.65
         UBL Flashtype: NAND
@@ -9,51 +10,14 @@ NAND:  2048 MiB
 nand_bbt: ECC error while reading bad block table
 *** Warning - bad CRC, using default environment
 
-In:    serial
-Out:   serial 
-Err:   serial 
-ARM Clock : 300000000 Hz   
+In:    serial          
+Out:   serial           
+Err:   serial            
+ARM Clock : 300000000 Hz  
 DDR Clock : 150000000 Hz   
-SF: Unsupported manufacturer ff 
- Error - unable to probe SPI flash. 
-Invalid MAC address read.           
-Net:   No ETH PHY detected!!!       
-Error: Ethernet init failed!        
-Board Net Initialization Failed     
-DaVinci-EMAC                        
-Hit any key to stop autoboot:  0    
-Unknown command 'mmc' - try 'help'  
-Unknown command 'sf' - try 'help'   
-Unknown command 'sf' - try 'help'   
-Wrong Image Format for bootm command 
-ERROR: can't get kernel image!       
-Manhattan > nand info                
-                                     
-Device 0: nand0, sector size 1024 KiB 
-  Page size      4096 b               
-  OOB size        224 b               
-  Erase size  1048576 b               
-Manhattan > printenv                  
-baudrate=115200                       
-bootargs=console=ttyS1,115200n8 noinitrd root=/dev/hda1 rw rootwait ip=off 
-bootcmd=if mmc rescan 0; then if fatload mmc 0 0xc0600000 boot.scr; then source 0xc0600000; else fatload mmc 0 0xc0700000 uImage; bootm c0700000; fi; else sf probe 0; si
-bootdelay=3                                                                
-bootfile="boot/uImage"                                                     
-ethact=DaVinci-EMAC                                                        
-nand_erasesize=100000                                                      
-nand_oobsize=e0                                                            
-nand_writesize=1000                                                        
-stderr=serial                                                              
-stdin=serial                                                               
-stdout=serial                                                              
-ver=U-Boot 2010.12-00012-g95a0564-dirty (Nov 20 2012 - 18:39:05)           
-                                                                           
-Environment size: 562/131068 bytes                                         
-Manhattan > version                                                        
-                                                                           
-U-Boot 2010.12-00012-g95a0564-dirty (Nov 20 2012 - 18:39:05)                                                                                                             
-Manhattan > 
-
-
-
-
+Invalid MAC address read.   
+Net:   No ETH PHY detected!!!
+Error: Ethernet init failed!  
+Board Net Initialization Failed
+DaVinci-EMAC
+Manhattan >

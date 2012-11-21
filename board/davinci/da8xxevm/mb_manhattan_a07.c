@@ -367,6 +367,7 @@ int board_eth_init(bd_t *bis)
 static int  get_mac_addr(u8 *addr)
 {
 
+#ifdef SPI_FLASH
 	int ret;
 	struct spi_flash *flash;
 
@@ -391,6 +392,11 @@ err_read:
 	/* spi_flash_free(flash); */
 err_probe:
 	return ret;
+#else
+  /*we need to put in a function to get the MAC address from the nand environment? */
+  return 0;
+#endif
+
 }
 
 void dsp_lpsc_on(unsigned domain, unsigned int id)
