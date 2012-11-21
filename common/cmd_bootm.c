@@ -709,6 +709,7 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return 1;
 }
 
+
 /**
  * image_get_kernel - verify legacy format kernel image
  * @img_addr: in RAM address of the legacy format image to be verified

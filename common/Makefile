@@ -155,6 +155,7 @@ COBJS-$(CONFIG_VFD) += cmd_vfd.o
 # others
 COBJS-$(CONFIG_DDR_SPD) += ddr_spd.o
 COBJS-$(CONFIG_HWCONFIG) += hwconfig.o
+COBJS-$(CONFIG_BOOTSTAGE) += bootstage.o
 COBJS-$(CONFIG_CONSOLE_MUX) += iomux.o
 COBJS-y += flash.o
 COBJS-$(CONFIG_CMD_KGDB) += kgdb.o kgdb_stubs.o

@@ -73,6 +73,20 @@ cmd_tbl_t *find_cmd_tbl (const char *cmd, cmd_tbl_t *table, int table_len);
 
 extern int cmd_usage(cmd_tbl_t *cmdtp);
 
+/*
+ * Error codes that commands return to cmd_process(). We use the standard 0
+ * and 1 for success and failure, but add one more case - failure with a
+ * request to call cmd_usage(). But the cmd_process() function handles
+ * CMD_RET_USAGE itself and after calling cmd_usage() it will return 1.
+ * This is just a convenience for commands to avoid them having to call
+ * cmd_usage() all over the place.
+ */
+enum command_ret_t {
+	CMD_RET_SUCCESS,	/* 0 = Success */
+	CMD_RET_FAILURE,	/* 1 = Failure */
+	CMD_RET_USAGE = -1,	/* Failure, please report 'usage' error */
+};
+
 #ifdef CONFIG_AUTO_COMPLETE
 extern void install_auto_complete(void);
 extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp);
@@ -96,6 +110,11 @@ typedef	void	command_t (cmd_tbl_t *, int, int, char *[]);
 #define CMD_DATA_SIZE
 extern int cmd_get_data_size(char* arg, int default_size);
 #endif
+
+static inline int bootm_maybe_autostart(cmd_tbl_t *cmdtp, const char *cmd)
+{
+	return 0;
+}
 
 #endif	/* __ASSEMBLY__ */
 
