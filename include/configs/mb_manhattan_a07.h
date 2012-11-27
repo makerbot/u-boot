@@ -207,7 +207,7 @@
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS		\
-	"mem=64M console=ttyS1,115200n8 root=/dev/ram0 rw initrd=0xc1180000,"
+	"mem=64M@0xC0000000 console=ttyS1,115200n8 root=/dev/ram0 rw initrd=0xc1180000,"
 /*
 #define CONFIG_BOOTCOMMAND 
 */
