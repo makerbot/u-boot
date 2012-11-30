@@ -251,7 +251,8 @@
 /* configuration for USB support on manhattan */
 #ifdef CONFIG_USE_USB
 #define CONFIG_USB_DAVINCI
-#define CONFIG_MUSB_HCD
+/*v Enable CONFIG_MUSB_HCD for Host functionalities MSC, keyboard */
+#define CONFIG_MUSB_HCD     1
 #define CONFIG_CMD_USB
 #define CONFIG_USB_STORAGE	/* MSC class support */
 #define CONFIG_CMD_STORAGE	/* inclue support for usb-storage cmd */
