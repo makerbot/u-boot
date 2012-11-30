@@ -584,3 +584,48 @@ int board_mmc_init(bd_t *bis)
 	return davinci_mmc_init(bis, &mmc_sd0);
 }
 #endif
+
+#ifdef CONFIG_DAVINCI_USB
+//int usb_phy_on(void)
+//{
+//	u32 timeout;
+//	u32 cfgchip2;
+//
+//	cfgchip2 = readl(&davinci_syscfg_regs->cfgchip2);
+//
+//	cfgchip2 &= ~(CFGCHIP2_RESET | CFGCHIP2_PHYPWRDN | CFGCHIP2_OTGPWRDN |
+//		      CFGCHIP2_OTGMODE | CFGCHIP2_REFFREQ |
+//		      CFGCHIP2_USB1PHYCLKMUX);
+//	cfgchip2 |= CFGCHIP2_SESENDEN | CFGCHIP2_VBDTCTEN | CFGCHIP2_PHY_PLLON |
+//		    CFGCHIP2_REFFREQ_24MHZ | CFGCHIP2_USB2PHYCLKMUX |
+//		    CFGCHIP2_USB1SUSPENDM;
+//
+//	writel(cfgchip2, &davinci_syscfg_regs->cfgchip2);
+//
+//	/* wait until the usb phy pll locks */
+//	timeout = DA8XX_USB_OTG_TIMEOUT;
+//	while (timeout--)
+//		if (readl(&davinci_syscfg_regs->cfgchip2) & CFGCHIP2_PHYCLKGD)
+//			return 1;
+//
+//	/* USB phy was not turned on */
+//	return 0;
+//}
+
+
+//void usb_phy_off(void)
+//{
+//	u32 cfgchip2;
+//
+//	/*
+//	 * Power down the on-chip PHY.
+//	 */
+//	cfgchip2 = readl(&davinci_syscfg_regs->cfgchip2);
+//	cfgchip2 &= ~(CFGCHIP2_PHY_PLLON | CFGCHIP2_USB1SUSPENDM);
+//	cfgchip2 |= CFGCHIP2_PHYPWRDN | CFGCHIP2_OTGPWRDN | CFGCHIP2_RESET;
+//	writel(cfgchip2, &davinci_syscfg_regs->cfgchip2);
+//}
+#error must write code for CONFIG_DAVINCI_USB
+#else /*CONFIG_DAVINCI_USB*/
+#error MUST Enable CONFIG_DAVINCI_USB
+#endif /*CONFIG_DAVINCI_USB*/

@@ -30,6 +30,7 @@
 #undef CONFIG_USE_SPIFLASH
 #undef	CONFIG_SYS_USE_NOR
 #define	CONFIG_USE_NAND
+#define CONFIG_USE_USB
 
 /*
  * SoC Configuration
@@ -246,6 +247,23 @@
 #define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS
 #endif
+
+/* configuration for USB support on manhattan */
+#ifdef CONFIG_USE_USB
+#define CONFIG_USB_DAVINCI
+#define CONFIG_MUSB_HCD
+#define CONFIG_CMD_USB
+#define CONFIG_USB_STORAGE	/* MSC class support */
+#define CONFIG_CMD_STORAGE	/* inclue support for usb-storage cmd */
+#define CONFIG_CMD_FAT		/* inclue support for FAT/storage */
+#define CONFIG_DOS_PARTITION	/* inclue support for FAT/storage */
+#else
+#undef CONFIG_MUSB_HCD
+#undef CONFIG_CMD_USB
+#undef CONFIG_USB_STORAGE
+#error CONFIG_USB_DAVINCI required for the moment in header 
+#endif
+
 
 #ifdef CONFIG_USE_SPIFLASH
 #undef CONFIG_CMD_IMLS
