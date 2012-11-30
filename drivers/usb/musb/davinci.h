@@ -27,11 +27,16 @@
 #include <asm/arch/hardware.h>
 #include "musb_core.h"
 
+#ifndef DAVINCI_SYSTEM_MODULE_BASE  
+#define DAVINCI_SYSTEM_MODULE_BASE  (0x01c40000)
+#endif 
+
 /* Base address of DAVINCI usb0 wrapper */
 #define DAVINCI_USB0_BASE 0x01C64000
-
 /* Base address of DAVINCI musb core */
 #define MENTOR_USB0_BASE (DAVINCI_USB0_BASE+0x400)
+
+/* 
 
 /*
  * Davinci platform USB wrapper register overlay. Note: Only the required
@@ -72,6 +77,7 @@ struct davinci_usb_regs {
 #define USBPHY_OSCPDWN		(1 << 2)
 #define USBPHY_PHYPDWN		(1 << 0)
 
+
 /* Timeout for Davinci USB module */
 #define DAVINCI_USB_TIMEOUT 0x3FFFFFF
 
@@ -84,4 +90,5 @@ extern void lpsc_on(unsigned int id);
 extern int i2c_write(uchar chip, uint addr, int alen, uchar *buffer, int len);
 extern int i2c_read(uchar chip, uint addr, int alen, uchar *buffer, int len);
 extern void enable_vbus(void);
+#else
 #endif	/* __DAVINCI_USB_H__ */

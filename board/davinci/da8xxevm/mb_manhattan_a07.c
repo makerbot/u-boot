@@ -585,7 +585,7 @@ int board_mmc_init(bd_t *bis)
 }
 #endif
 
-#ifdef CONFIG_DAVINCI_USB
+#ifdef CONFIG_USB_DAVINCI
 //int usb_phy_on(void)
 //{
 //	u32 timeout;
@@ -625,7 +625,7 @@ int board_mmc_init(bd_t *bis)
 //	cfgchip2 |= CFGCHIP2_PHYPWRDN | CFGCHIP2_OTGPWRDN | CFGCHIP2_RESET;
 //	writel(cfgchip2, &davinci_syscfg_regs->cfgchip2);
 //}
-#error must write code for CONFIG_DAVINCI_USB
-#else /*CONFIG_DAVINCI_USB*/
-#error MUST Enable CONFIG_DAVINCI_USB
-#endif /*CONFIG_DAVINCI_USB*/
+#warning code for CONFIG_USB_DAVINCIis elsewhere
+#else /*CONFIG_USB_DAVINCI*/
+#error MUST Enable CONFIG_USB_DAVINCI
+#endif /*CONFIG_USB_DAVINCI*/

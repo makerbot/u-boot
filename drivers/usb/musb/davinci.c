@@ -24,7 +24,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include "davinci.h"
-#include <asm/arch/hardware.h>
+//#include <asm/arch/hardware.h>
 
 /* MUSB platform configuration */
 struct musb_config musb_cfg = {
@@ -33,7 +33,24 @@ struct musb_config musb_cfg = {
 	.musb_speed	= 0,
 };
 
-/* MUSB module register overlay */
+
+/*
+ *  * This function enables VBUS by driving the GPIO Bank4 Pin 15 high.
+ *   */
+void enable_vbus(void)
+{
+    u32 value;
+#warning it seems P15 is always on on AM1808 
+    /* configure GPIO bank4 pin 15 in output direction */
+//    value = readl(&davinci_gpio_bank45->dir);
+//    writel((value & (~DA8XX_USB_VBUS_GPIO)), &davinci_gpio_bank45->dir);
+    /* set GPIO bank4 pin 15 high to drive VBUS */
+//    value = readl(&davinci_gpio_bank45->set_data);
+//    writel((value | DA8XX_USB_VBUS_GPIO), &davinci_gpio_bank45->set_data);
+}
+
+
+//* MUSB module register overlay */
 struct davinci_usb_regs *dregs;
 
 /*
