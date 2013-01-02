@@ -51,20 +51,6 @@ static const struct pinmux_config spi1_pins[] = {
 	{ pinmux(5), 1, 5 }
 };
 
-#ifdef CONFIG_DAVINCI_MMC
-/* MMC0 pin muxer settings */
-const struct pinmux_config mmc0_pins[] = {
-	/* GP0[11] is required for SD to work on Rev 3 EVMs */
-	{ pinmux(0),  8, 4 },	/* GP0[11] */
-	{ pinmux(10), 2, 0 },	/* MMCSD0_CLK */
-	{ pinmux(10), 2, 1 },	/* MMCSD0_CMD */
-	{ pinmux(10), 2, 2 },	/* MMCSD0_DAT_0 */
-	{ pinmux(10), 2, 3 },	/* MMCSD0_DAT_1 */
-	{ pinmux(10), 2, 4 },	/* MMCSD0_DAT_2 */
-	{ pinmux(10), 2, 5 },	/* MMCSD0_DAT_3 */
-	/* DA850 supports only 4-bit mode, remaining pins are not configured */
-};
-#endif
 
 /* UART pin muxer settings */
 static const struct pinmux_config uart_pins[] = {
@@ -120,56 +106,6 @@ const struct pinmux_config nand_pins[] = {
 	{ pinmux(12), 1, 5 }, // A[2] CLE
 	{ pinmux(12), 1, 6 } // A[1] ALE
 };
-#elif defined (CONFIG_SYS_USE_NOR)
-const struct pinmux_config nor_pins[] = {
-	/* GP0[11] is required for SD to work on Rev 3 EVMs */
-	{ pinmux(0), 8, 4 },	/* GP0[11] */
-	{ pinmux(5), 1, 6 },
-	{ pinmux(6), 1, 6 },
-	{ pinmux(7), 1, 0 },
-	{ pinmux(7), 1, 4 },
-	{ pinmux(7), 1, 5 },
-	{ pinmux(8), 1, 0 },
-	{ pinmux(8), 1, 1 },
-	{ pinmux(8), 1, 2 },
-	{ pinmux(8), 1, 3 },
-	{ pinmux(8), 1, 4 },
-	{ pinmux(8), 1, 5 },
-	{ pinmux(8), 1, 6 },
-	{ pinmux(8), 1, 7 },
-	{ pinmux(9), 1, 0 },
-	{ pinmux(9), 1, 1 },
-	{ pinmux(9), 1, 2 },
-	{ pinmux(9), 1, 3 },
-	{ pinmux(9), 1, 4 },
-	{ pinmux(9), 1, 5 },
-	{ pinmux(9), 1, 6 },
-	{ pinmux(9), 1, 7 },
-	{ pinmux(10), 1, 0 },
-	{ pinmux(10), 1, 1 },
-	{ pinmux(10), 1, 2 },
-	{ pinmux(10), 1, 3 },
-	{ pinmux(10), 1, 4 },
-	{ pinmux(10), 1, 5 },
-	{ pinmux(10), 1, 6 },
-	{ pinmux(10), 1, 7 },
-	{ pinmux(11), 1, 0 },
-	{ pinmux(11), 1, 1 },
-	{ pinmux(11), 1, 2 },
-	{ pinmux(11), 1, 3 },
-	{ pinmux(11), 1, 4 },
-	{ pinmux(11), 1, 5 },
-	{ pinmux(11), 1, 6 },
-	{ pinmux(11), 1, 7 },
-	{ pinmux(12), 1, 0 },
-	{ pinmux(12), 1, 1 },
-	{ pinmux(12), 1, 2 },
-	{ pinmux(12), 1, 3 },
-	{ pinmux(12), 1, 4 },
-	{ pinmux(12), 1, 5 },
-	{ pinmux(12), 1, 6 },
-	{ pinmux(12), 1, 7 }
-};
 #endif
 
 #ifdef CONFIG_DRIVER_TI_EMAC_USE_RMII
@@ -179,16 +115,10 @@ const struct pinmux_config nor_pins[] = {
 #endif
 
 static const struct pinmux_resource pinmuxes[] = {
-#ifdef CONFIG_SPI_FLASH
 	PINMUX_ITEM(spi1_pins),
-#endif
 	PINMUX_ITEM(uart_pins),
 	PINMUX_ITEM(i2c_pins),
-#ifdef CONFIG_NAND_DAVINCI
 	PINMUX_ITEM(nand_pins),
-#elif defined(CONFIG_USE_NOR)
-	PINMUX_ITEM(nor_pins),
-#endif
 };
 
 static const struct lpsc_resource lpsc[] = {
@@ -197,9 +127,6 @@ static const struct lpsc_resource lpsc[] = {
 	{ DAVINCI_LPSC_EMAC },	/* image download */
 	{ DAVINCI_LPSC_UART1 },	/* console */
 	{ DAVINCI_LPSC_GPIO },
-#ifdef CONFIG_DAVINCI_MMC
-	{ DAVINCI_LPSC_MMC_SD },
-#endif		
 };
 
 #ifndef CONFIG_DA850_EVM_MAX_CPU_CLK
@@ -299,37 +226,11 @@ int board_init(void)
 	if (davinci_configure_pin_mux_items(pinmuxes, ARRAY_SIZE(pinmuxes)))
 		return 1;
 
-#ifdef CONFIG_SYS_USE_NOR	
-	/* Set the GPIO direction as output */
-	temp = REG(GPIO_BANK0_REG_DIR_ADDR);
-	temp &= ~(0x01 << 11);
-	REG(GPIO_BANK0_REG_DIR_ADDR) = temp;
-
-	/* Set the output as low */
-	temp = REG(GPIO_BANK0_REG_SET_ADDR);
-	temp |= (0x01 << 11);
-	REG(GPIO_BANK0_REG_CLR_ADDR) = temp;
-#endif	
-
-#ifdef CONFIG_DAVINCI_MMC
-	if (davinci_configure_pin_mux(mmc0_pins, ARRAY_SIZE(mmc0_pins)) != 0)
-		return 1;
-
-	/* Set the GPIO direction as output */
-	temp = REG(GPIO_BANK0_REG_DIR_ADDR);
-	temp &= ~(0x01 << 11);
-	REG(GPIO_BANK0_REG_DIR_ADDR) = temp;
-
-	/* Set the output as high */
-	temp = REG(GPIO_BANK0_REG_SET_ADDR);
-	temp |= (0x01 << 11);
-	REG(GPIO_BANK0_REG_SET_ADDR) = temp;
-#endif
-
 #ifdef CONFIG_DRIVER_TI_EMAC
 	if (davinci_configure_pin_mux(emac_pins, ARRAY_SIZE(emac_pins)) != 0)
 		return 1;
 	da850_emac_mii_mode_sel(HAS_RMII);
+  printf("configure ethernet pins\n");
 #endif /* CONFIG_DRIVER_TI_EMAC */
 
 	/* enable the console UART */
@@ -393,7 +294,15 @@ err_read:
 err_probe:
 	return ret;
 #else
-  /*we need to put in a function to get the MAC address from the nand environment? */
+  /* we need to put in a function to get the MAC address from the nand environment
+   * temporarily, we hardcode the MAC Address*/
+
+  addr[0] = 26;
+  addr[1] = 15;
+  addr[2] = 99;
+  addr[3] = 105;
+  addr[4] = 52;
+  addr[5] = 230;
   return 0;
 #endif
 
@@ -448,89 +357,6 @@ static void dspwake(void)
 	REG(PSC0_MDCTL + (15 * 4)) |= 0x100;
 }
 
-#ifdef CONFIG_DRIVER_TI_EMAC_USE_RMII
-/**
- * rmii_hw_init
- *
- * DA850/OMAP-L138 EVM can interface to a daughter card for
- * additional features. This card has an I2C GPIO Expander TCA6416
- * to select the required functions like camera, RMII Ethernet,
- * character LCD, video.
- *
- * Initialization of the expander involves configuring the
- * polarity and direction of the ports. P07-P05 are used here.
- * These ports are connected to a Mux chip which enables only one
- * functionality at a time.
- *
- * For RMII phy to respond, the MII MDIO clock has to be  disabled
- * since both the PHY devices have address as zero. The MII MDIO
- * clock is controlled via GPIO2[6].
- *
- * This code is valid for Beta version of the hardware
- */
-int rmii_hw_init(void)
-{
-	const struct pinmux_config gpio_pins[] = {
-		{ pinmux(6), 8, 1 }
-	};
-	u_int8_t buf[2];
-	unsigned int temp;
-	int ret;
-
-	/* PinMux for GPIO */
-	if (davinci_configure_pin_mux(gpio_pins, ARRAY_SIZE(gpio_pins)) != 0)
-		return 1;
-
-	/* I2C Exapnder configuration */
-	/* Set polarity to non-inverted */
-	buf[0] = 0x0;
-	buf[1] = 0x0;
-	ret = i2c_write(CONFIG_SYS_I2C_EXPANDER_ADDR, 4, 1, buf, 2);
-	if (ret) {
-		printf("\nExpander @ 0x%02x write FAILED!!!\n",
-				CONFIG_SYS_I2C_EXPANDER_ADDR);
-		return ret;
-	}
-
-	/* Configure P07-P05 as outputs */
-	buf[0] = 0x1f;
-	buf[1] = 0xff;
-	ret = i2c_write(CONFIG_SYS_I2C_EXPANDER_ADDR, 6, 1, buf, 2);
-	if (ret) {
-		printf("\nExpander @ 0x%02x write FAILED!!!\n",
-				CONFIG_SYS_I2C_EXPANDER_ADDR);
-	}
-
-	/* For Ethernet RMII selection
-	 * P07(SelA)=0
-	 * P06(SelB)=1
-	 * P05(SelC)=1
-	 */
-	if (i2c_read(CONFIG_SYS_I2C_EXPANDER_ADDR, 2, 1, buf, 1)) {
-		printf("\nExpander @ 0x%02x read FAILED!!!\n",
-				CONFIG_SYS_I2C_EXPANDER_ADDR);
-	}
-
-	buf[0] &= 0x1f;
-	buf[0] |= (0 << 7) | (1 << 6) | (1 << 5);
-	if (i2c_write(CONFIG_SYS_I2C_EXPANDER_ADDR, 2, 1, buf, 1)) {
-		printf("\nExpander @ 0x%02x write FAILED!!!\n",
-				CONFIG_SYS_I2C_EXPANDER_ADDR);
-	}
-
-	/* Set the output as high */
-	temp = REG(GPIO_BANK2_REG_SET_ADDR);
-	temp |= (0x01 << 6);
-	REG(GPIO_BANK2_REG_SET_ADDR) = temp;
-
-	/* Set the GPIO direction as output */
-	temp = REG(GPIO_BANK2_REG_DIR_ADDR);
-	temp &= ~(0x01 << 6);
-	REG(GPIO_BANK2_REG_DIR_ADDR) = temp;
-
-	return 0;
-}
-#endif /* CONFIG_DRIVER_TI_EMAC_USE_RMII */
 
 int misc_init_r(void)
 {
@@ -545,6 +371,7 @@ int misc_init_r(void)
 			/* Set Ethernet MAC address from EEPROM */
 			davinci_sync_env_enetaddr(addr);
 		} else {
+      printf("getting mac address\n");
 			get_mac_addr(addr);
 		}
 
@@ -557,30 +384,9 @@ int misc_init_r(void)
 
 		setenv("ethaddr", (char *)tmp);
 	}
-#ifdef CONFIG_DRIVER_TI_EMAC_USE_RMII
-	/* Select RMII fucntion through the expander */
-	if (rmii_hw_init())
-		printf("RMII hardware init failed!!!\n");
-#endif
 
 	dspwake();
 
 	return 0;
 }
 
-#ifdef CONFIG_DAVINCI_MMC
-static struct davinci_mmc mmc_sd0 = {
-	.reg_base = (struct davinci_mmc_regs *)DAVINCI_MMC_SD0_BASE,
-	.host_caps = MMC_MODE_4BIT,     /* DA850 supports only 4-bit SD/MMC */
-	.voltages = MMC_VDD_32_33 | MMC_VDD_33_34,
-	.version = MMC_CTLR_VERSION_2,
-};
-
-int board_mmc_init(bd_t *bis)
-{
-	mmc_sd0.input_clk = clk_get(DAVINCI_MMCSD_CLKID);
-
-	/* Add slot-0 to mmc subsystem */
-	return davinci_mmc_init(bis, &mmc_sd0);
-}
-#endif

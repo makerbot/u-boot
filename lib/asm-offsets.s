@@ -237,14 +237,14 @@ main:
 	.ascii	"long unsigned int\000"
 .LASF10:
 	.ascii	"GNU C 4.3.3\000"
-.LASF12:
-	.ascii	"/home/alison/Makerbot/u-boot\000"
 .LASF3:
 	.ascii	"signed char\000"
 .LASF11:
 	.ascii	"lib/asm-offsets.c\000"
 .LASF13:
 	.ascii	"main\000"
+.LASF12:
+	.ascii	"/home/alison/MainDrive/Makerbot/u-boot\000"
 .LASF7:
 	.ascii	"long long unsigned int\000"
 .LASF0:

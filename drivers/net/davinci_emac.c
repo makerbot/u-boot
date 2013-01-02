@@ -44,7 +44,7 @@
 #include <asm/arch/emac_defs.h>
 #include <asm/io.h>
 
-unsigned int	emac_dbg = 0;
+unsigned int	emac_dbg = 1;
 #define debug_emac(fmt,args...)	if (emac_dbg) printf(fmt,##args)
 
 #ifdef DAVINCI_EMAC_GIG_ENABLE
@@ -189,6 +189,7 @@ int davinci_eth_phy_read(u_int8_t phy_addr, u_int8_t reg_num, u_int16_t *data)
 	while ((tmp = readl(&adap_mdio->USERACCESS0)) & MDIO_USERACCESS0_GO)
 		;
 
+  printf("phy read data: %i\n", tmp);
 	if (tmp & MDIO_USERACCESS0_ACK) {
 		*data = tmp & 0xffff;
 		return(1);
@@ -692,12 +693,14 @@ int davinci_emac_initialize(void)
 	}
 
 	/* Find if a PHY is connected and get it's address */
-	if (!davinci_eth_phy_detect())
+	if (!davinci_eth_phy_detect()){
 		return(0);
+  }
 
 	/* Get PHY ID and initialize phy_ops for a detected PHY */
 	if (!davinci_eth_phy_read(active_phy_addr, PHY_PHYIDR1, &tmp)) {
 		active_phy_addr = 0xff;
+    printf("eth_phy_read fail\n");
 		return(0);
 	}
 
@@ -705,6 +708,7 @@ int davinci_emac_initialize(void)
 
 	if (!davinci_eth_phy_read(active_phy_addr, PHY_PHYIDR2, &tmp)) {
 		active_phy_addr = 0xff;
+    printf("second eth_phy_read fail\n");
 		return(0);
 	}
 
