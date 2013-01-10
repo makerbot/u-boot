@@ -13,6 +13,7 @@
 *~
 *.swp
 *.patch
+*.s
 
 #
 # Top-level generic files
