@@ -689,7 +689,7 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_MSM8X60_QRDC         3060
 #define MACH_TYPE_SPEAR900             3061
 #define MACH_TYPE_PCONTROL_G20         3062
-#define MACH_TYPE_RDSTOR               3063
+#define MACH_TYPE_DAVINCI_MANHATTAN_A07        3063
 #define MACH_TYPE_USDLOADER            3064
 #define MACH_TYPE_TSOPLOADER           3065
 #define MACH_TYPE_KRONOS               3066
@@ -1107,7 +1107,6 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_OMAP5_SEVM           3777
 #define MACH_TYPE_ARMADILLO_800EVA     3863
 #define MACH_TYPE_KZM9G                4140
-#define MACH_TYPE_DAVINCI_MANHATTAN_A07        3888
 
 #ifdef CONFIG_ARCH_EBSA110
 # ifdef machine_arch_type

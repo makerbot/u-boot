@@ -50,6 +50,11 @@ const struct pinmux_config uart2_pins_txrx[] = {
 	{ pinmux(4), 2, 5 }, /* UART2_TXD */
 };
 
+const struct pinmux_config uart1_pins_rtscts[] = {
+	{ pinmux(0), 4, 4 }, /* UART1_RTS */
+	{ pinmux(0), 4, 5 }, /* UART1_CTS */
+};
+
 const struct pinmux_config uart2_pins_rtscts[] = {
 	{ pinmux(0), 4, 6 }, /* UART2_RTS */
 	{ pinmux(0), 4, 7 }, /* UART2_CTS */
@@ -114,6 +119,7 @@ const struct pinmux_config emifa_pins_cs4[] = {
 };
 
 const struct pinmux_config emifa_pins_nand[] = {
+	{ pinmux(7), 1, 7 },  /* EMA_RB */
 	{ pinmux(7), 1, 4 },  /* EMA_WE */
 	{ pinmux(7), 1, 5 },  /* EMA_OE */
 	{ pinmux(9), 1, 0 },  /* EMA_D[7] */
