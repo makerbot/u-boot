@@ -90,11 +90,11 @@ static const struct pinmux_config i2c_pins[] = {
 
 #ifdef CONFIG_NAND_DAVINCI
 const struct pinmux_config nand_pins[] = {
-  { pinmux(7), 1, 1 }, // CS[3]
+    { pinmux(7), 1, 1 }, // CS[3]
 //	{ pinmux(7), 1, 2 },
 	{ pinmux(7), 1, 4 }, // WE
 	{ pinmux(7), 1, 5 }, // OE
-  { pinmux(7), 1, 7 }, // RB
+    { pinmux(7), 1, 7 }, // RB
 	{ pinmux(9), 1, 0 }, // D[7]
 	{ pinmux(9), 1, 1 }, // D[6]
 	{ pinmux(9), 1, 2 }, // D[5]
