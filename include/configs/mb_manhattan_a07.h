@@ -145,10 +145,11 @@
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS		\
-  "console=ttyS1,115200n8 noinitrd ip=off mem=64M@0xC0000000 rootdelay=40 rw ubi.mtd=4,4096" \
-    "rootfstype=ubifs root=ubi0:rootfs init=/linuxrc"
+  "console=ttyS1,115200n8 noinitrd ip=off mem=64M@0xC0000000 rootdelay=1 rw ubi.mtd=4,4096 " \
+    "rootfstype=ubifs root=ubi0:filesystem init=/linuxrc"
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_EXTRA_ENV_SETTINGS	"hwconfig=dsp:wake=yes"
+#define CONFIG_BOOTCOMMAND "nand read 0xC0000000 0x1000000 0x300000;bootm 0xC0000000"
 
 /*
  * U-Boot commands
