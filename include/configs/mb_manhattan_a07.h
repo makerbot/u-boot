@@ -93,7 +93,7 @@
 #define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
 #define CONFIG_ENV_SIZE			(256 << 12)
 #define	CONFIG_SYS_NAND_USE_FLASH_BBT
-#define CONFIG_SYS_NAND_4BIT_HW_ECC_OOBFIRST
+#define CONFIG_SYS_NAND_ECC_BCH
 #define	CONFIG_SYS_NAND_PAGE_4K
 #define CONFIG_SYS_NAND_CS		3
 #define CONFIG_SYS_NAND_BASE		DAVINCI_ASYNC_EMIF_DATA_CE3_BASE
@@ -148,8 +148,13 @@
   "console=ttyS1,115200n8 noinitrd ip=off mem=64M@0xC0000000 rootdelay=1 rw ubi.mtd=4,4096 " \
     "rootfstype=ubifs root=ubi0:filesystem init=/linuxrc"
 #define CONFIG_BOOTDELAY	3
-#define CONFIG_EXTRA_ENV_SETTINGS	"hwconfig=dsp:wake=yes"
-#define CONFIG_BOOTCOMMAND "nand read 0xC0000000 0x1000000 0x300000;bootm 0xC0000000"
+#define CONFIG_EXTRA_ENV_SETTINGS	"setbootargs=setenv bootargs console=ttyS1,115200n8 noinitrd ip=off " \
+    "mem=64M@0xC0000000 rootdelay=1 rw ubi.mtd=${current_root_mtd},4096 rootfstype=ubifs root=ubi0:filesystem" \
+    " init=/linuxrc eth=${macaddr}\0" \
+    "current_root_mtd=4\0" \
+    "vid=23C1\0" \
+
+#define CONFIG_BOOTCOMMAND "run setbootargs; nand read 0xC0000000 0x1000000 0x300000;bootm 0xC0000000"
 
 /*
  * U-Boot commands
