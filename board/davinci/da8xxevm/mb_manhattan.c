@@ -135,7 +135,7 @@ int board_init(void)
 	       &davinci_emif_regs->ab2cr); /* CS3 */
 
 	/* arch number of the board */
-	gd->bd->bi_arch_number = MACH_TYPE_DAVINCI_MANHATTAN_A07;
+	gd->bd->bi_arch_number = MACH_TYPE_DAVINCI_MANHATTAN;
 
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = LINUX_BOOT_PARAM_ADDR;

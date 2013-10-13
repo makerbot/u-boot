@@ -483,6 +483,9 @@ enum davinci_clk_ids {
 	DAVINCI_AUXCLK_CLKID			= 0x101,
 };
 
+#define DAVINCI_UART1_CLKID	(cpu_is_da830() ? DAVINCI_PLL0_SYSCLK2 \
+						: get_async3_src())
+
 #define DAVINCI_UART2_CLKID	(cpu_is_da830() ? DAVINCI_PLL0_SYSCLK2 \
 						: get_async3_src())
 
@@ -521,6 +524,7 @@ struct davinci_syscfg_regs {
 #define DAVINCI_SYSCFG_SUSPSRC_SPI0		(1 << 21)
 #define DAVINCI_SYSCFG_SUSPSRC_SPI1		(1 << 22)
 #define DAVINCI_SYSCFG_SUSPSRC_UART0		(1 << 18)
+#define DAVINCI_SYSCFG_SUSPSRC_UART1		(1 << 19)
 #define DAVINCI_SYSCFG_SUSPSRC_UART2		(1 << 20)
 #define DAVINCI_SYSCFG_SUSPSRC_TIMER0		(1 << 27)
 
