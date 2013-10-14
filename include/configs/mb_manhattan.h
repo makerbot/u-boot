@@ -51,7 +51,7 @@
 /*
  * Memory Info
  */
-#define CONFIG_SYS_MALLOC_LEN	(0x10000 + 1*1024*1024) /* malloc() len */
+#define CONFIG_SYS_MALLOC_LEN	(0x10000 + 16*1024*1024) /* malloc() len */
 #define PHYS_SDRAM_1		DAVINCI_DDR_EMIF_DATA_BASE /* DDR Start */
 #define PHYS_SDRAM_1_SIZE	(128 << 20) /* SDRAM size 128MB */
 #define CONFIG_MAX_RAM_BANK_SIZE (512 << 20) /* max size from SPRS586*/
@@ -110,6 +110,8 @@
 #define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
 #define CONFIG_ENV_SIZE			(256 << 12)
 #define	CONFIG_SYS_NAND_USE_FLASH_BBT
+#define CONFIG_BCH
+#define CONFIG_NAND_ECC_BCH
 #define CONFIG_SYS_NAND_ECC_BCH
 #define	CONFIG_SYS_NAND_PAGE_4K
 #define CONFIG_SYS_NAND_CS		3

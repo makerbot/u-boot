@@ -630,6 +630,13 @@ void davinci_nand_init(struct nand_chip *nand)
 	nand->ecc.hwctl = nand_davinci_4bit_enable_hwecc;
 	nand->ecc.layout = &nand_davinci_4bit_layout_oobfirst;
 #endif
+#ifdef CONFIG_SYS_NAND_ECC_BCH
+    nand->ecc.mode = NAND_ECC_SOFT_BCH;
+    nand->ecc.size = 1024;
+    nand->ecc.bytes = 42;
+#endif
+
+
 	/* Set address of hardware control function */
 	nand->cmd_ctrl = nand_davinci_hwcontrol;
 

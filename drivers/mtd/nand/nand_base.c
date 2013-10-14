@@ -3024,7 +3024,7 @@ ident_done:
 	if (chip->onfi_version)
 		name = chip->onfi_params.model;
 #endif
-	pr_info("NAND device: Manufacturer ID: 0x%02x, Chip ID: 0x%02x (%s %s),"
+	printf("NAND device: Manufacturer ID: 0x%02x, Chip ID: 0x%02x (%s %s),"
 		" page size: %d, OOB size: %d\n",
 		*maf_id, *dev_id, nand_manuf_ids[maf_idx].name,
 		name,
@@ -3238,7 +3238,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 
 	case NAND_ECC_SOFT_BCH:
 		if (!mtd_nand_has_bch()) {
-			pr_warn("CONFIG_MTD_ECC_BCH not enabled\n");
+			printf("CONFIG_MTD_ECC_BCH not enabled\n");
 			return -EINVAL;
 		}
 		chip->ecc.calculate = nand_bch_calculate_ecc;
@@ -3260,14 +3260,16 @@ int nand_scan_tail(struct mtd_info *mtd)
 			chip->ecc.size = 512;
 			chip->ecc.bytes = 7;
 		}
+        printf("BCH init\n");
 		chip->ecc.priv = nand_bch_init(mtd,
 					       chip->ecc.size,
 					       chip->ecc.bytes,
 					       &chip->ecc.layout);
 		if (!chip->ecc.priv)
-			pr_warn("BCH ECC initialization failed!\n");
+			printf("BCH ECC initialization failed!\n");
  		chip->ecc.strength =
 			chip->ecc.bytes * 8 / fls(8 * chip->ecc.size);
+        printf("BCH Init Success\n");
 		break;
 
 	case NAND_ECC_NONE:
@@ -3311,10 +3313,12 @@ int nand_scan_tail(struct mtd_info *mtd)
 	 */
 	chip->ecc.steps = mtd->writesize / chip->ecc.size;
 	if (chip->ecc.steps * chip->ecc.size != mtd->writesize) {
-		pr_warn("Invalid ECC parameters\n");
+		printf("Invalid ECC parameters\n");
 		BUG();
 	}
 	chip->ecc.total = chip->ecc.steps * chip->ecc.bytes;
+
+    printf("Valid ECC parameters\n");
 
 	/* Allow subpage writes up to ecc.steps. Not possible for MLC flash */
 	if (!(chip->options & NAND_NO_SUBPAGE_WRITE) &&
@@ -3377,6 +3381,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 	if (chip->options & NAND_SKIP_BBTSCAN)
 		chip->options |= NAND_BBT_SCANNED;
 
+    printf("completed scan\n");
 	return 0;
 }
 

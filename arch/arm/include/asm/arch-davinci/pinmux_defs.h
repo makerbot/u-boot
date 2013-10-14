@@ -37,6 +37,7 @@ extern const struct pinmux_config spi1_pins_scs0[1];
 extern const struct pinmux_config uart0_pins_txrx[2];
 extern const struct pinmux_config uart1_pins_txrx[2];
 extern const struct pinmux_config uart2_pins_txrx[2];
+extern const struct pinmux_config uart1_pins_rtscts[2];
 extern const struct pinmux_config uart2_pins_rtscts[2];
 
 /* EMAC pin muxer settings*/
@@ -55,7 +56,7 @@ extern const struct pinmux_config emifa_pins_cs0[1];
 extern const struct pinmux_config emifa_pins_cs2[1];
 extern const struct pinmux_config emifa_pins_cs3[1];
 extern const struct pinmux_config emifa_pins_cs4[1];
-extern const struct pinmux_config emifa_pins_nand[12];
+extern const struct pinmux_config emifa_pins_nand[13];
 extern const struct pinmux_config emifa_pins_nor[43];
 
 /* USB pin mux setting */

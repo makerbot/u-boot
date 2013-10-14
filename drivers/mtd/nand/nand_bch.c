@@ -44,6 +44,8 @@ struct nand_bch_control {
 	unsigned char        *eccmask;
 };
 
+/*struct nand_bch_control nbc;
+*/
 /**
  * nand_bch_calculate_ecc - [NAND Interface] Calculate ECC for data block
  * @mtd:	MTD block structure
@@ -128,29 +130,35 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 {
 	unsigned int m, t, eccsteps, i;
 	struct nand_ecclayout *layout;
-	struct nand_bch_control *nbc = NULL;
+	struct nand_bch_control *nbcc = NULL;
 	unsigned char *erased_page;
 
 	if (!eccsize || !eccbytes) {
-		printk(KERN_WARNING "ecc parameters not supplied\n");
+		printf( "ecc parameters not supplied\n");
 		goto fail;
 	}
 
 	m = fls(1+8*eccsize);
 	t = (eccbytes*8)/m;
 
-	nbc = kzalloc(sizeof(*nbc), GFP_KERNEL);
-	if (!nbc)
+    printf("kzalloc size %d\n", sizeof(*nbcc));
+	nbcc = kzalloc(sizeof(*nbcc), 1);
+	if (!nbcc){
+        printf("kzalloc fail size: %d\n", sizeof(*nbcc));
 		goto fail;
+    }
+    
 
-	nbc->bch = init_bch(m, t, 0);
-	if (!nbc->bch)
+	nbcc->bch = init_bch(m, t, 0);
+	if (!nbcc->bch){
+        printf("init bch fail\n");
 		goto fail;
+    }
 
 	/* verify that eccbytes has the expected value */
-	if (nbc->bch->ecc_bytes != eccbytes) {
-		printk(KERN_WARNING "invalid eccbytes %u, should be %u\n",
-		       eccbytes, nbc->bch->ecc_bytes);
+	if (nbcc->bch->ecc_bytes != eccbytes) {
+		printf( "invalid eccbytes %u, should be %u\n",
+		       eccbytes, nbcc->bch->ecc_bytes);
 		goto fail;
 	}
 
@@ -161,17 +169,17 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 
 		/* handle large page devices only */
 		if (mtd->oobsize < 64) {
-			printk(KERN_WARNING "must provide an oob scheme for "
+			printf( "must provide an oob scheme for "
 			       "oobsize %d\n", mtd->oobsize);
 			goto fail;
 		}
 
-		layout = &nbc->ecclayout;
+		layout = &nbcc->ecclayout;
 		layout->eccbytes = eccsteps*eccbytes;
 
 		/* reserve 2 bytes for bad block marker */
 		if (layout->eccbytes+2 > mtd->oobsize) {
-			printk(KERN_WARNING "no suitable oob scheme available "
+			printf( "no suitable oob scheme available "
 			       "for oobsize %d eccbytes %u\n", mtd->oobsize,
 			       eccbytes);
 			goto fail;
@@ -188,36 +196,43 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 
 	/* sanity checks */
 	if (8*(eccsize+eccbytes) >= (1 << m)) {
-		printk(KERN_WARNING "eccsize %u is too large\n", eccsize);
+		printf( "eccsize %u is too large\n", eccsize);
 		goto fail;
 	}
 	if ((*ecclayout)->eccbytes != (eccsteps*eccbytes)) {
-		printk(KERN_WARNING "invalid ecc layout\n");
+		printf( "invalid ecc layout\n");
 		goto fail;
 	}
 
-	nbc->eccmask = kmalloc(eccbytes, GFP_KERNEL);
-	nbc->errloc = kmalloc(t*sizeof(*nbc->errloc), GFP_KERNEL);
-	if (!nbc->eccmask || !nbc->errloc)
+
+    printf("eccmask kmalloc\n");
+	nbcc->eccmask = kmalloc(eccbytes, GFP_KERNEL);
+    printf("errloc kmalloc\n");
+	nbcc->errloc = kmalloc(t*sizeof(*nbcc->errloc), GFP_KERNEL);
+	if (!nbcc->eccmask || !nbcc->errloc)
 		goto fail;
 	/*
 	 * compute and store the inverted ecc of an erased ecc block
 	 */
+    printf("erased page kmalloc\n");
 	erased_page = kmalloc(eccsize, GFP_KERNEL);
-	if (!erased_page)
+	if (!erased_page){
+        printf("kmalloc fail size: %d\n", eccsize);
 		goto fail;
+    }
 
 	memset(erased_page, 0xff, eccsize);
-	memset(nbc->eccmask, 0, eccbytes);
-	encode_bch(nbc->bch, erased_page, eccsize, nbc->eccmask);
+	memset(nbcc->eccmask, 0, eccbytes);
+	encode_bch(nbcc->bch, erased_page, eccsize, nbcc->eccmask);
 	kfree(erased_page);
 
 	for (i = 0; i < eccbytes; i++)
-		nbc->eccmask[i] ^= 0xff;
+		nbcc->eccmask[i] ^= 0xff;
 
-	return nbc;
+	return nbcc;
 fail:
-	nand_bch_free(nbc);
+    printf("failed bch init\n");
+	nand_bch_free(nbcc);
 	return NULL;
 }
 
