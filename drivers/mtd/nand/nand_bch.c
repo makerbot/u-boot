@@ -42,10 +42,8 @@ struct nand_bch_control {
 	struct nand_ecclayout ecclayout;
 	unsigned int         *errloc;
 	unsigned char        *eccmask;
-};
+} nbc;
 
-/*struct nand_bch_control nbc;
-*/
 /**
  * nand_bch_calculate_ecc - [NAND Interface] Calculate ECC for data block
  * @mtd:	MTD block structure
@@ -56,15 +54,15 @@ int nand_bch_calculate_ecc(struct mtd_info *mtd, const unsigned char *buf,
 			   unsigned char *code)
 {
 	const struct nand_chip *chip = mtd->priv;
-	struct nand_bch_control *nbc = chip->ecc.priv;
+	//struct nand_bch_control *nbc = chip->ecc.priv;
 	unsigned int i;
 
 	memset(code, 0, chip->ecc.bytes);
-	encode_bch(nbc->bch, buf, chip->ecc.size, code);
+	encode_bch(nbc.bch, buf, chip->ecc.size, code);
 
 	/* apply mask so that an erased page is a valid codeword */
 	for (i = 0; i < chip->ecc.bytes; i++)
-		code[i] ^= nbc->eccmask[i];
+		code[i] ^= nbc.eccmask[i];
 
 	return 0;
 }
@@ -82,11 +80,11 @@ int nand_bch_correct_data(struct mtd_info *mtd, unsigned char *buf,
 			  unsigned char *read_ecc, unsigned char *calc_ecc)
 {
 	const struct nand_chip *chip = mtd->priv;
-	struct nand_bch_control *nbc = chip->ecc.priv;
-	unsigned int *errloc = nbc->errloc;
+	//struct nand_bch_control *nbc = chip->ecc.priv;
+	unsigned int *errloc = nbc.errloc;
 	int i, count;
 
-	count = decode_bch(nbc->bch, NULL, chip->ecc.size, read_ecc, calc_ecc,
+	count = decode_bch(nbc.bch, NULL, chip->ecc.size, read_ecc, calc_ecc,
 			   NULL, errloc);
 	if (count > 0) {
 		for (i = 0; i < count; i++) {
@@ -130,7 +128,7 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 {
 	unsigned int m, t, eccsteps, i;
 	struct nand_ecclayout *layout;
-	struct nand_bch_control *nbcc = NULL;
+	//struct nand_bch_control *nbcc = NULL;
 	unsigned char *erased_page;
 
 	if (!eccsize || !eccbytes) {
@@ -141,24 +139,24 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 	m = fls(1+8*eccsize);
 	t = (eccbytes*8)/m;
 
-    printf("kzalloc size %d\n", sizeof(*nbcc));
-	nbcc = kzalloc(sizeof(*nbcc), 1);
-	if (!nbcc){
-        printf("kzalloc fail size: %d\n", sizeof(*nbcc));
-		goto fail;
-    }
+    //printf("kzalloc size %d\n", sizeof(*nbcc));
+	//nbcc = kzalloc(sizeof(*nbcc), 1);
+	//if (!nbcc){
+    //    printf("kzalloc fail size: %d\n", sizeof(*nbcc));
+	//	goto fail;
+    //}
     
 
-	nbcc->bch = init_bch(m, t, 0);
-	if (!nbcc->bch){
+	nbc.bch = init_bch(m, t, 0);
+	if (!nbc.bch){
         printf("init bch fail\n");
 		goto fail;
     }
 
 	/* verify that eccbytes has the expected value */
-	if (nbcc->bch->ecc_bytes != eccbytes) {
+	if (nbc.bch->ecc_bytes != eccbytes) {
 		printf( "invalid eccbytes %u, should be %u\n",
-		       eccbytes, nbcc->bch->ecc_bytes);
+		       eccbytes, nbc.bch->ecc_bytes);
 		goto fail;
 	}
 
@@ -174,7 +172,7 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 			goto fail;
 		}
 
-		layout = &nbcc->ecclayout;
+		layout = &(nbc.ecclayout);
 		layout->eccbytes = eccsteps*eccbytes;
 
 		/* reserve 2 bytes for bad block marker */
@@ -205,16 +203,16 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
 	}
 
 
-    printf("eccmask kmalloc\n");
-	nbcc->eccmask = kmalloc(eccbytes, GFP_KERNEL);
-    printf("errloc kmalloc\n");
-	nbcc->errloc = kmalloc(t*sizeof(*nbcc->errloc), GFP_KERNEL);
-	if (!nbcc->eccmask || !nbcc->errloc)
+	nbc.eccmask = kmalloc(eccbytes, GFP_KERNEL);
+	nbc.errloc = kmalloc(t*sizeof(*(nbc.errloc)), GFP_KERNEL);
+	if (!nbc.eccmask || !nbc.errloc){
+        printf("ecc mask or errloc fail\n");
 		goto fail;
+    }
+
 	/*
 	 * compute and store the inverted ecc of an erased ecc block
 	 */
-    printf("erased page kmalloc\n");
 	erased_page = kmalloc(eccsize, GFP_KERNEL);
 	if (!erased_page){
         printf("kmalloc fail size: %d\n", eccsize);
@@ -222,17 +220,17 @@ nand_bch_init(struct mtd_info *mtd, unsigned int eccsize, unsigned int eccbytes,
     }
 
 	memset(erased_page, 0xff, eccsize);
-	memset(nbcc->eccmask, 0, eccbytes);
-	encode_bch(nbcc->bch, erased_page, eccsize, nbcc->eccmask);
+	memset(nbc.eccmask, 0, eccbytes);
+	encode_bch(nbc.bch, erased_page, eccsize, nbc.eccmask);
 	kfree(erased_page);
 
 	for (i = 0; i < eccbytes; i++)
-		nbcc->eccmask[i] ^= 0xff;
+		nbc.eccmask[i] ^= 0xff;
 
-	return nbcc;
+	return &nbc;
 fail:
     printf("failed bch init\n");
-	nand_bch_free(nbcc);
+	//nand_bch_free(nbcc);
 	return NULL;
 }
 
@@ -240,12 +238,12 @@ fail:
  * nand_bch_free - [NAND Interface] Release NAND BCH ECC resources
  * @nbc:	NAND BCH control structure
  */
-void nand_bch_free(struct nand_bch_control *nbc)
+void nand_bch_free(struct nand_bch_control *nbcc)
 {
-	if (nbc) {
-		free_bch(nbc->bch);
-		kfree(nbc->errloc);
-		kfree(nbc->eccmask);
-		kfree(nbc);
-	}
+	//if (nbc) {
+		free_bch(nbc.bch);
+		kfree(nbc.errloc);
+		kfree(nbc.eccmask);
+		//kfree(nbc);
+	//}
 }

@@ -990,15 +990,19 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 	uint32_t sum;
 
 	/* sanity check: make sure data length can be handled */
-	if (8*len > (bch->n-bch->ecc_bits))
+	if (8*len > (bch->n-bch->ecc_bits)){
+        printf("data length cannot be handled, len: %d, ecc_bits: %d\n", len, bch->n-bch->ecc_bits);
 		return -EINVAL;
+    }
 
 	/* if caller does not provide syndromes, compute them */
 	if (!syn) {
 		if (!calc_ecc) {
 			/* compute received data ecc into an internal buffer */
-			if (!data || !recv_ecc)
+			if (!data || !recv_ecc){
+                printf("data or recv_ecc does not exist\n");
 				return -EINVAL;
+            }
 			encode_bch(bch, data, len, NULL);
 		} else {
 			/* load provided calculated ecc */
@@ -1023,8 +1027,10 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 	err = compute_error_locator_polynomial(bch, syn);
 	if (err > 0) {
 		nroots = find_poly_roots(bch, 1, bch->elp, errloc);
-		if (err != nroots)
+		if (err != nroots){
+            //printf("err: %d not equal to nroots: %d\n", err, nroots);
 			err = -1;
+        }
 	}
 	if (err > 0) {
 		/* post-process raw error locations for easier correction */
@@ -1032,6 +1038,7 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 		for (i = 0; i < err; i++) {
 			if (errloc[i] >= nbits) {
 				err = -1;
+                printf("errloc is greater than nbits\n");
 				break;
 			}
 			errloc[i] = nbits-1-errloc[i];
