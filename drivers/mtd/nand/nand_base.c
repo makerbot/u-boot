@@ -921,10 +921,9 @@ static int nand_read_page_swecc(struct mtd_info *mtd, struct nand_chip *chip,
 
 		stat = chip->ecc.correct(mtd, p, &ecc_code[i], &ecc_calc[i]);
 		if (stat < 0){
-            printf("page: %d, eccstep: %d\n", page, eccstep);
+            printf("page: %d, eccstep: %d\n", page, eccsteps);
 			mtd->ecc_stats.failed++;
-        }
-		else
+		} else
 			mtd->ecc_stats.corrected += stat;
 	}
 	return 0;
@@ -3262,7 +3261,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 			chip->ecc.size = 512;
 			chip->ecc.bytes = 7;
 		}
-        printf("BCH init\n");
 		chip->ecc.priv = nand_bch_init(mtd,
 					       chip->ecc.size,
 					       chip->ecc.bytes,
@@ -3271,7 +3269,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 			printf("BCH ECC initialization failed!\n");
  		chip->ecc.strength =
 			chip->ecc.bytes * 8 / fls(8 * chip->ecc.size);
-        printf("BCH Init Success\n");
 		break;
 
 	case NAND_ECC_NONE:
@@ -3319,8 +3316,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 		BUG();
 	}
 	chip->ecc.total = chip->ecc.steps * chip->ecc.bytes;
-
-    printf("Valid ECC parameters\n");
 
 	/* Allow subpage writes up to ecc.steps. Not possible for MLC flash */
 	if (!(chip->options & NAND_NO_SUBPAGE_WRITE) &&
@@ -3383,7 +3378,6 @@ int nand_scan_tail(struct mtd_info *mtd)
 	if (chip->options & NAND_SKIP_BBTSCAN)
 		chip->options |= NAND_BBT_SCANNED;
 
-    printf("completed scan\n");
 	return 0;
 }
 

@@ -1028,7 +1028,7 @@ int decode_bch(struct bch_control *bch, const uint8_t *data, unsigned int len,
 	if (err > 0) {
 		nroots = find_poly_roots(bch, 1, bch->elp, errloc);
 		if (err != nroots){
-            //printf("err: %d not equal to nroots: %d\n", err, nroots);
+            printf("err: %d not equal to nroots: %d\n", err, nroots);
 			err = -1;
         }
 	}

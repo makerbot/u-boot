@@ -108,7 +108,7 @@
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_IS_IN_NAND		/* U-Boot env in NAND Flash  */
 #define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
-#define CONFIG_ENV_SIZE			(256 << 12)
+#define CONFIG_ENV_SIZE			(1 << 12)
 #define	CONFIG_SYS_NAND_USE_FLASH_BBT
 #define CONFIG_BCH
 #define CONFIG_NAND_ECC_BCH
