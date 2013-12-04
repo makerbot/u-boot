@@ -106,6 +106,7 @@
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
 #define CONFIG_SF_DEFAULT_SPEED    750000
 #define CONFIG_SPI_FLASH
+#define CONFIG_SPI_FLASH_STMICRO
 #define CONFIG_SYS_SPI_U_BOOT_OFFS 0x80000
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_OFFSET          0xE00000  /* Top 1 meg of NOR flash */
@@ -154,13 +155,16 @@
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTDELAY	3
-#define CONFIG_EXTRA_ENV_SETTINGS	"setbootargs=setenv bootargs console=ttyS1,115200n8 noinitrd ip=off " \
-    "mem=128M@0xC0000000 rootdelay=1 rw ubi.mtd=${current_root_mtd},4096 rootfstype=ubifs root=ubi0:filesystem" \
-    " init=/linuxrc eth=${macaddr}\0" \
+#define CONFIG_EXTRA_ENV_SETTINGS \
+    "setbootargs=setenv bootargs console=ttyS1,115200n8 noinitrd ip=off " \
+    "mem=128M@0xC0000000 rootdelay=1 rw ubi.mtd=${current_root_mtd},4096 " \
+    "rootfstype=ubifs root=ubi0:filesystem init=/linuxrc eth=${macaddr}\0" \
     "current_root_mtd=4\0" \
+    "current_kernel_addr=0x100000\0" \
     "vid=23C1\0" \
 
-#define CONFIG_BOOTCOMMAND "run setbootargs; nand read 0xC0000000 0x1000000 0x300000;bootm 0xC0000000"
+#define CONFIG_BOOTCOMMAND \
+    "run setbootargs; sf probe; sf read 0xC0000000 ${current_kernel_addr} 0x300000; bootm 0xC0000000"
 
 /*
  * U-Boot commands
@@ -185,6 +189,9 @@
 #undef CONFIG_CMD_MII
 #undef CONFIG_CMD_PING
 #endif
+
+#define CONFIG_CMD_SF
+#define CONFIG_SF_DEFAULT_BUS 1
 
 #if 0
 #ifdef CONFIG_SYS_USE_NAND

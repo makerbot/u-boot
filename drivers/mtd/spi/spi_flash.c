@@ -83,6 +83,13 @@ int spi_flash_cmd_wait_ready(struct spi_flash *flash, unsigned long timeout)
 		check_status = poll_bit;
 	}
 
+	timebase = get_timer(0);
+
+    /* Wait for a bit to give the cs line enough high time.
+     * Not so long that we need to worry about the watchdog timer.
+     */
+	while (get_timer(timebase) < SPI_FLASH_READY_DELAY);
+
 	ret = spi_xfer(spi, 8, &cmd, NULL, SPI_XFER_BEGIN);
 	if (ret) {
 		debug("SF: fail to read %s status register\n",
@@ -90,7 +97,6 @@ int spi_flash_cmd_wait_ready(struct spi_flash *flash, unsigned long timeout)
 		return ret;
 	}
 
-	timebase = get_timer(0);
 	do {
 		WATCHDOG_RESET();
 
