@@ -28,7 +28,7 @@
  */
 #define CONFIG_DRIVER_TI_EMAC
 
-#define	CONFIG_SYS_USE_NAND	1
+#define	CONFIG_SYS_USE_NAND	0
 
 /*
  * SoC Configuration
@@ -68,11 +68,10 @@
 #define CONFIG_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_BOARD_INIT
-#define CONFIG_SPL_NAND_SUPPORT
-#define CONFIG_SPL_NAND_BASE
-#define CONFIG_SPL_NAND_DRIVERS
-#define CONFIG_SPL_NAND_ECC
-#define CONFIG_SPL_NAND_SIMPLE
+#define CONFIG_SPL_SPI_FLASH_SUPPORT
+#define CONFIG_SPL_SPI_LOAD
+#define CONFIG_SPL_SPI_BUS 1
+#define CONFIG_SPL_SPI_CS 1
 #define CONFIG_SPL_LIBGENERIC_SUPPORT	/* for udelay and __div64_32 for NAND */
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_LDSCRIPT		"board/$(BOARDDIR)/u-boot-spl-hawk.lds"
@@ -101,51 +100,17 @@
 /*
  * Flash & Environment
  */
-#ifdef CONFIG_SYS_USE_NAND
-#undef CONFIG_ENV_IS_IN_FLASH
-#define CONFIG_NAND_DAVINCI
-#define CONFIG_SYS_NAND_ONFI_DETECTION
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_ENV_IS_IN_NAND		/* U-Boot env in NAND Flash  */
-#define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
-#define CONFIG_ENV_SIZE			(1 << 12)
-#define	CONFIG_SYS_NAND_USE_FLASH_BBT
-#define CONFIG_BCH
-#define CONFIG_NAND_ECC_BCH
-#define CONFIG_SYS_NAND_ECC_BCH
-#define	CONFIG_SYS_NAND_PAGE_4K
-#define CONFIG_SYS_NAND_CS		3
-#define CONFIG_SYS_NAND_BASE		DAVINCI_ASYNC_EMIF_DATA_CE3_BASE
-#define CONFIG_SYS_CLE_MASK		0x10
-#define CONFIG_SYS_ALE_MASK		0x8
-#undef CONFIG_SYS_NAND_HW_ECC
-#define CONFIG_SYS_MAX_NAND_DEVICE	1 /* Max number of NAND devices */
-
-#define CONFIG_SYS_NAND_PAGE_SIZE	(1 << 12)
-#define CONFIG_SYS_NAND_BLOCK_SIZE	(256 << 12)
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	0x600000
-#define CONFIG_SYS_NAND_U_BOOT_DST	0xc1080000
-#define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_NAND_U_BOOT_DST
-#define CONFIG_SYS_NAND_U_BOOT_RELOC_SP	(CONFIG_SYS_NAND_U_BOOT_DST - \
-					CONFIG_SYS_NAND_U_BOOT_SIZE - \
-					CONFIG_SYS_MALLOC_LEN -       \
-					GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_NAND_ECCPOS		{				\
-		48, 49, 50, 51, 52, 53, 54, 55, 56, 57,     \
-		58, 59, 60, 61, 62, 63,	64, 65, 66, 67,     \
-		68, 69, 70, 71, 72, 73, 74, 75, 76, 77,     \
-		78, 79,	80, 81, 82, 83,	84, 85, 86, 87,     \
-		88, 89, 90, 91, 92, 93,	94, 95, 96, 97,     \
-		98, 99, 100, 101, 102, 103, 104, 105, 106, 107,    \
-		108, 109, 110, 111, 112, 113, 114, 115, 116, 117,  \
-		118, 119, 120, 121, 122, 123, 124, 125, 126, 127}  \
-		
-#define CONFIG_SYS_NAND_PAGE_COUNT	256
-#define CONFIG_SYS_NAND_BAD_BLOCK_POS	0
-#define CONFIG_SYS_NAND_ECCSIZE		512
-#define CONFIG_SYS_NAND_ECCBYTES	10
-#define CONFIG_SYS_NAND_OOBSIZE		224
-#endif
+#define CONFIG_SYS_NO_FLASH                  /* Why? */
+#define CONFIG_DAVINCI_SPI
+#define CONFIG_SYS_SPI_BASE		DAVINCI_SPI1_BASE
+#define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
+#define CONFIG_SF_DEFAULT_SPEED    750000
+#define CONFIG_SPI_FLASH
+#define CONFIG_SYS_SPI_U_BOOT_OFFS 0x80000
+#define CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_ENV_OFFSET          0xE00000  /* Top 1 meg of NOR flash */
+#define CONFIG_ENV_SIZE            (1 << 12)
+#define CONFIG_ENV_SECT_SIZE       0x10000   /* TODO: use subsectors */
 
 /*
  * Network & Ethernet Configuration
@@ -221,6 +186,7 @@
 #undef CONFIG_CMD_PING
 #endif
 
+#if 0
 #ifdef CONFIG_SYS_USE_NAND
 #undef CONFIG_CMD_FLASH
 #undef CONFIG_CMD_IMLS
@@ -233,6 +199,7 @@
 #define CONFIG_RBTREE
 #define CONFIG_CMD_UBI
 #define CONFIG_CMD_UBIFS
+#endif
 #endif
 
 

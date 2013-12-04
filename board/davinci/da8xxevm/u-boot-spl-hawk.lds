@@ -36,7 +36,6 @@ SECTIONS
 	{
 	  arch/arm/cpu/arm926ejs/start.o		(.text*)
 	  arch/arm/cpu/arm926ejs/davinci/libdavinci.o	(.text*)
-	  drivers/mtd/nand/libnand.o			(.text*)
 
 	  *(.text*)
 	}
