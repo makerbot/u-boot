@@ -1,3 +1,4 @@
+import sys
 import os
 import fnmatch
 
@@ -71,11 +72,11 @@ config_sources = [
 ]
 
 config_targets = [
-	'arch/arm/include/asm/arch',
-	'arch/arm/include/asm/proc',
-	'include/asm',
-	'include/config.h',
-	'include/config.mk',
+    'arch/arm/include/asm/arch',
+    'arch/arm/include/asm/proc',
+    'include/asm',
+    'include/config.h',
+    'include/config.mk',
 ]
 
 env.Command(config_targets, config_sources, make_cmd('mb_manhattan_config'))
@@ -89,25 +90,25 @@ build_sources = filter(not_generated, build_sources)
 
 build_targets = [
     'u-boot.bin',
-	'u-boot',
-	'u-boot.lds',
-	'u-boot.map',
+    'u-boot',
+    'u-boot.lds',
+    'u-boot.map',
 ]
 
 build = env.Command(build_targets, build_sources, make_cmd('u-boot.bin'))
 
 clean_targets = [
-	'arch/arm/cpu/arm926ejs/davinci/asm-offsets.s',
-	'include/autoconf.mk',
-	'include/autoconf.mk.dep',
-	'lib/asm-offsets.s',
-	'tools/envcrc',
-	'tools/gen_eth_addr',
-	'tools/img2srec',
-	'tools/kernel-doc/docproc',
-	'tools/mkenvimage',
-	'tools/mkimage',
-	'tools/proftool',
+    'arch/arm/cpu/arm926ejs/davinci/asm-offsets.s',
+    'include/autoconf.mk',
+    'include/autoconf.mk.dep',
+    'lib/asm-offsets.s',
+    'tools/envcrc',
+    'tools/gen_eth_addr',
+    'tools/img2srec',
+    'tools/kernel-doc/docproc',
+    'tools/mkenvimage',
+    'tools/mkimage',
+    'tools/proftool',
 ]
 clean_targets.extend(env.MBRecursiveFileGlob('include/generated', '*'))
 clean_targets.extend(env.MBRecursiveFileGlob('.', '*.o'))
@@ -115,9 +116,13 @@ clean_targets.extend(env.MBRecursiveFileGlob('.', '.depend*'))
 
 env.Clean(build, clean_targets)
 
-#binary = os.path.join(ubootDir, 'u-boot.bin')
-#out = os.path.join(ubootDir, 'u-boot-manhattan.bin')
-#from add_uboot_header import UBootHeader
-#p = UBootHeader(binary, out)
-#p.add_header()
-#p.close()
+# Add a header to produce the final boot image
+binary = 'u-boot.bin'
+target = 'u-boot-manhattan.bin'
+def add_header(target, source, env):
+    sys.path.append(ubootDir)
+    from add_uboot_header import UBootHeader
+    p = UBootHeader(str(source[0]), str(target[0]))
+    p.add_header()
+    p.close()
+env.Command(target, binary, add_header)
