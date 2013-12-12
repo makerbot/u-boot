@@ -62,6 +62,8 @@
 /include/generated/
 asm-offsets.s
 
+.sconsign.dblite
+
 # stgit generated dirs
 patches-*
 .stgit-edit.txt
