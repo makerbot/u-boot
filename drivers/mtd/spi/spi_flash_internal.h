@@ -13,10 +13,11 @@
 #define SPI_FLASH_SECTOR_ERASE_TIMEOUT	(10 * CONFIG_SYS_HZ)
 
 /* Apparently we are not holding the cs line high for long enough between a
- * write/erase and reading the status register.  Writing is slow anyways, so
- * lets make this a nice big delay
+ * write/erase and reading the status register.  (Writing is slow, so no
+ * problem going over on this).
+ * UNIT: microseconds
  */
-#define SPI_FLASH_READY_DELAY ((CONFIG_SYS_HZ / 1000000) + 1)
+#define SPI_FLASH_READY_DELAY (2)
 
 /* Common commands */
 #define CMD_READ_ID			0x9f

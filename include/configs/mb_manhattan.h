@@ -154,7 +154,7 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	3
+#define CONFIG_BOOTDELAY	1
 #define CONFIG_EXTRA_ENV_SETTINGS \
     "setbootargs=setenv bootargs console=ttyS1,115200n8 noinitrd ip=off " \
     "mem=128M@0xC0000000 rootdelay=1 rw ubi.mtd=${current_root_mtd},4096 " \
@@ -191,7 +191,6 @@
 #endif
 
 #define CONFIG_CMD_SF
-#define CONFIG_SF_DEFAULT_BUS 1
 
 #if 0
 #ifdef CONFIG_SYS_USE_NAND
