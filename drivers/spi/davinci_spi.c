@@ -184,11 +184,12 @@ static int davinci_spi_write(struct spi_slave *slave, unsigned int len,
 	while (readl(&ds->regs->buf) & SPIBUF_TXFULL_MASK)
 		;
 
-	/* preload the TX buffer to avoid clock starvation */
+	/* preload the TX buf--NOPE
 	if (len > 2) {
 		writel(data1_reg_val | *txp++, &ds->regs->dat1);
 		len--;
 	}
+    */
 
 	/* keep writing 1 byte until only 1 byte left */
 	while ((len--) > 1)

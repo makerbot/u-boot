@@ -73,6 +73,7 @@ int spi_flash_cmd_wait_ready(struct spi_flash *flash, unsigned long timeout)
 	struct spi_slave *spi = flash->spi;
 	unsigned long timebase;
 	int ret;
+	int count = 0;
 	u8 status;
 	u8 check_status = 0x0;
 	u8 poll_bit = STATUS_WIP;
@@ -83,33 +84,32 @@ int spi_flash_cmd_wait_ready(struct spi_flash *flash, unsigned long timeout)
 		check_status = poll_bit;
 	}
 
-	timebase = get_timer(0);
-
-    /* Wait for a bit to give the cs line enough high time.
-     * Not so long that we need to worry about the watchdog timer.
-     */
-	while (get_timer(timebase) < SPI_FLASH_READY_DELAY);
-
-	ret = spi_xfer(spi, 8, &cmd, NULL, SPI_XFER_BEGIN);
 	if (ret) {
-		debug("SF: fail to read %s status register\n",
-			cmd == CMD_READ_STATUS ? "read" : "flag");
 		return ret;
 	}
 
+	/* Require three in a row because our chip sucks */
+	timebase = get_timer(0);
 	do {
 		WATCHDOG_RESET();
 
-		ret = spi_xfer(spi, 8, NULL, &status, 0);
-		if (ret)
-			return -1;
+		/* Wait for a bit to give the cs line enough high time. */
+		udelay(SPI_FLASH_READY_DELAY);
+
+		ret = spi_xfer(spi, 8, &cmd, NULL, SPI_XFER_BEGIN);
+		if (ret) return -1;
+
+		ret = spi_xfer(spi, 8, NULL, &status, SPI_XFER_END);
+		if (ret) return -1;
 
 		if ((status & poll_bit) == check_status)
-			break;
+			count++;
+		else
+			count = 0;
 
-	} while (get_timer(timebase) < timeout);
+	} while (count < 3 && get_timer(timebase) < timeout);
 
-	spi_xfer(spi, 0, NULL, NULL, SPI_XFER_END);
+	//spi_xfer(spi, 0, NULL, NULL, SPI_XFER_END);
 
 	if ((status & poll_bit) == check_status)
 		return 0;
@@ -277,6 +277,7 @@ int spi_flash_read_common(struct spi_flash *flash, const u8 *cmd,
 	return ret;
 }
 
+#ifdef CONFIG_SPI_FLASH_FAST_READ
 int spi_flash_cmd_read_fast(struct spi_flash *flash, u32 offset,
 		size_t len, void *data)
 {
@@ -325,6 +326,55 @@ int spi_flash_cmd_read_fast(struct spi_flash *flash, u32 offset,
 
 	return ret;
 }
+#else
+int spi_flash_cmd_read_slow(struct spi_flash *flash, u32 offset,
+		size_t len, void *data)
+{
+	u8 cmd[4], bank_sel = 0;
+	u32 remain_len, read_len;
+	int ret = -1;
+
+	/* Handle memory-mapped SPI */
+	if (flash->memory_map) {
+		memcpy(data, flash->memory_map + offset, len);
+		return 0;
+	}
+
+	cmd[0] = CMD_READ_ARRAY_SLOW;
+
+	while (len) {
+#ifdef CONFIG_SPI_FLASH_BAR
+		bank_sel = offset / SPI_FLASH_16MB_BOUN;
+
+		ret = spi_flash_cmd_bankaddr_write(flash, bank_sel);
+		if (ret) {
+			debug("SF: fail to set bank%d\n", bank_sel);
+			return ret;
+		}
+#endif
+		remain_len = (SPI_FLASH_16MB_BOUN * (bank_sel + 1) - offset);
+		if (len < remain_len)
+			read_len = len;
+		else
+			read_len = remain_len;
+
+		spi_flash_addr(offset, cmd);
+
+		ret = spi_flash_read_common(flash, cmd, sizeof(cmd),
+							data, read_len);
+		if (ret < 0) {
+			debug("SF: read failed\n");
+			break;
+		}
+
+		offset += read_len;
+		len -= read_len;
+		data += read_len;
+	}
+
+	return ret;
+}
+#endif
 
 int spi_flash_cmd_write_status(struct spi_flash *flash, u8 sr)
 {
@@ -604,7 +654,11 @@ void *spi_flash_do_alloc(int offset, int size, struct spi_slave *spi,
 	flash->name = name;
 	flash->poll_cmd = CMD_READ_STATUS;
 
+#ifdef CONFIG_SPI_FLASH_FAST_READ
 	flash->read = spi_flash_cmd_read_fast;
+#else
+	flash->read = spi_flash_cmd_read_slow;
+#endif
 	flash->write = spi_flash_cmd_write_multi;
 	flash->erase = spi_flash_cmd_erase;
 
