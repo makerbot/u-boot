@@ -157,11 +157,10 @@
 #define CONFIG_BOOTDELAY	1
 #define CONFIG_EXTRA_ENV_SETTINGS \
     "setbootargs=setenv bootargs console=ttyS1,115200n8 noinitrd ip=off " \
-    "mem=128M@0xC0000000 rootdelay=1 rw ubi.mtd=${current_root_mtd},4096 " \
-    "rootfstype=ubifs root=ubi0:filesystem init=/linuxrc eth=${macaddr}\0" \
-    "current_root_mtd=4\0" \
+    "mem=128M@0xC0000000 rootdelay=1 rw ubi.mtd=o,4096 rootfstype=ubifs " \
+    "root=ubi0:${current_root_volume} init=/linuxrc eth=${macaddr}\0" \
+    "current_root_volume=root0\0" \
     "current_kernel_addr=0x100000\0" \
-    "vid=23C1\0" \
 
 #define CONFIG_BOOTCOMMAND \
     "run setbootargs; sf probe; sf read 0xC0000000 ${current_kernel_addr} 0x300000; bootm 0xC0000000"
