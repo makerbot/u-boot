@@ -28,7 +28,6 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc5xxx.h>
-#include <timestamp.h>
 #include <version.h>
 
 #define CONFIG_MPC5xxx 1	/* needed for Linux kernel header files */
@@ -41,10 +40,6 @@
 #include <asm/mmu.h>
 #include <asm/u-boot.h>
 
-#ifndef  CONFIG_IDENT_STRING
-#define  CONFIG_IDENT_STRING ""
-#endif
-
 /* We don't want the  MMU yet.
 */
 #undef	MSR_KERNEL
@@ -55,6 +50,7 @@
 #define MSR_KERNEL (MSR_FP|MSR_ME|MSR_RI)
 #endif
 
+#ifndef CONFIG_SPL_BUILD
 /*
  * Set up GOT: Global Offset Table
  *
@@ -70,9 +66,10 @@
 	GOT_ENTRY(transfer_to_handler)
 
 	GOT_ENTRY(__init_end)
-	GOT_ENTRY(_end)
+	GOT_ENTRY(__bss_end)
 	GOT_ENTRY(__bss_start)
 	END_GOT
+#endif
 
 /*
  * Version string
@@ -80,9 +77,7 @@
 	.data
 	.globl	version_string
 version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
-	.ascii CONFIG_IDENT_STRING, "\0"
+	.ascii U_BOOT_VERSION_STRING, "\0"
 
 /*
  * Exception vectors
@@ -91,6 +86,18 @@ version_string:
 	. = EXC_OFF_SYS_RESET
 	.globl	_start
 _start:
+
+#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
+	/*
+	 * This is the entry of the real U-Boot from a board port
+	 * that supports SPL booting on the MPC5200. We only need
+	 * to call board_init_f() here. Everything else has already
+	 * been done in the SPL u-boot version.
+	 */
+	GET_GOT			/* initialize GOT access		*/
+	bl	board_init_f	/* run 1st part of board init code (in Flash)*/
+	/* NOTREACHED - board_init_f() does not return */
+#else
 	mfmsr	r5			/* save msr contents		*/
 
 	/* Move CSBoot and adjust instruction pointer                   */
@@ -159,7 +166,9 @@ lowboot_reentry:
 	/* Be careful to keep code relocatable !			*/
 	/*--------------------------------------------------------------*/
 
+#ifndef CONFIG_SPL_BUILD
 	GET_GOT			/* initialize GOT access		*/
+#endif
 
 	/* r3: IMMR */
 	bl	cpu_init_f	/* run low-level CPU init code (in Flash)*/
@@ -167,7 +176,9 @@ lowboot_reentry:
 	bl	board_init_f	/* run 1st part of board init code (in Flash)*/
 
 	/* NOTREACHED - board_init_f() does not return */
+#endif
 
+#ifndef CONFIG_SPL_BUILD
 /*
  * Vector Table
  */
@@ -340,6 +351,7 @@ int_return:
 	lwz	r1,GPR1(r1)
 	SYNC
 	rfi
+#endif /* CONFIG_SPL_BUILD */
 
 /*
  * This code initialises the MPC5xxx processor core
@@ -529,6 +541,7 @@ get_pvr:
 	mfspr	r3, PVR
 	blr
 
+#ifndef CONFIG_SPL_BUILD
 /*------------------------------------------------------------------------------*/
 
 /*
@@ -681,7 +694,7 @@ clear_bss:
 	 * Now clear BSS segment
 	 */
 	lwz	r3,GOT(__bss_start)
-	lwz	r4,GOT(_end)
+	lwz	r4,GOT(__bss_end)
 
 	cmplw	0, r3, r4
 	beq	6f
@@ -766,3 +779,5 @@ trap_init:
 
 	mtlr	r4			/* restore link register    */
 	blr
+
+#endif /* CONFIG_SPL_BUILD */

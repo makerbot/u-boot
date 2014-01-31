@@ -27,7 +27,7 @@
 #include <asm/sysreg.h>
 
 #include <asm/arch/clk.h>
-#include <asm/arch/memory-map.h>
+#include <asm/arch/hardware.h>
 
 #include "hsmc3.h"
 
@@ -47,7 +47,7 @@ int cpu_init(void)
 {
 	extern void _evba(void);
 
-	gd->cpu_hz = CONFIG_SYS_OSC0_HZ;
+	gd->arch.cpu_hz = CONFIG_SYS_OSC0_HZ;
 
 	/* TODO: Move somewhere else, but needs to be run before we
 	 * increase the clock frequency. */
@@ -59,7 +59,7 @@ int cpu_init(void)
 	clk_init();
 
 	/* Update the CPU speed according to the PLL configuration */
-	gd->cpu_hz = get_cpu_clk_rate();
+	gd->arch.cpu_hz = get_cpu_clk_rate();
 
 	/* Set up the exception handler table and enable exceptions */
 	sysreg_write(EVBA, (unsigned long)&_evba);

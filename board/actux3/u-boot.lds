@@ -30,46 +30,83 @@ SECTIONS
 
 	. = ALIGN (4);
 	.text : {
-		arch/arm/cpu/ixp/start.o (.text)
-		lib/string.o (.text)
-		lib/vsprintf.o (.text)
-		arch/arm/lib/board.o (.text)
-		common/dlmalloc.o (.text)
-		arch/arm/cpu/ixp/cpu.o (.text)
+		*(.__image_copy_start)
+		arch/arm/cpu/ixp/start.o(.text*)
+		net/libnet.o(.text*)
+		board/actux3/libactux3.o(.text*)
+		arch/arm/cpu/ixp/libixp.o(.text*)
+		drivers/input/libinput.o(.text*)
 
 		. = env_offset;
-		common/env_embedded.o (.ppcenv)
-
-		* (.text)
+		common/env_embedded.o(.ppcenv)
+		*(.text*)
 	}
 
-	. = ALIGN (4);
+	. = ALIGN(4);
 	.rodata : {
 		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
 	}
-
-	. = ALIGN (4);
+	. = ALIGN(4);
 	.data : {
-		*(.data)
+		*(.data*)
 	}
-
-	. = ALIGN (4);
+	. = ALIGN(4);
 	.got : {
 		*(.got)
 	}
-
 	. =.;
-	__u_boot_cmd_start =.;
-	.u_boot_cmd : {
-		*(.u_boot_cmd)
+
+	. = ALIGN(4);
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list*)));
 	}
-	__u_boot_cmd_end =.;
 
 	. = ALIGN (4);
-	__bss_start =.;
-	.bss (NOLOAD): {
-		*(.bss)
-		. = ALIGN(4);
+
+	.image_copy_end :
+	{
+		*(.__image_copy_end)
 	}
-	_end =.;
+
+	.rel_dyn_start :
+	{
+		*(.__rel_dyn_start)
+	}
+
+	.rel.dyn : {
+		*(.rel*)
+	}
+
+	.rel_dyn_end :
+	{
+		*(.__rel_dyn_end)
+	}
+
+	_end = .;
+
+/*
+ * Compiler-generated __bss_start and __bss_end, see arch/arm/lib/bss.c
+ * __bss_base and __bss_limit are for linker only (overlay ordering)
+ */
+
+	.bss_start __rel_dyn_start (OVERLAY) : {
+		KEEP(*(.__bss_start));
+		__bss_base = .;
+	}
+
+	.bss __bss_base (OVERLAY) : {
+		*(.bss*)
+		 . = ALIGN(4);
+		__bss_limit = .;
+	}
+	.bss_end __bss_limit (OVERLAY) : {
+		KEEP(*(.__bss_end));
+	}
+
+	/DISCARD/ : { *(.dynsym) }
+	/DISCARD/ : { *(.dynstr*) }
+	/DISCARD/ : { *(.dynamic*) }
+	/DISCARD/ : { *(.plt*) }
+	/DISCARD/ : { *(.interp*) }
+	/DISCARD/ : { *(.gnu*) }
 }

@@ -27,9 +27,14 @@ BIG_ENDIAN = y
 PLATFORM_RELFLAGS += -fno-common -ffixed-r8 -msoft-float -mbig-endian
 
 PLATFORM_CPPFLAGS += -mbig-endian -march=armv5te -mtune=strongarm1100
+
+PLATFORM_LDFLAGS += -EB
+USE_PRIVATE_LIBGCC = yes
+
 # =========================================================================
 #
 # Supply options according to compiler version
 #
 # =========================================================================
-PLATFORM_RELFLAGS +=$(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
+PF_RELFLAGS_SLB_AT := $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
+PLATFORM_RELFLAGS += $(PF_RELFLAGS_SLB_AT)

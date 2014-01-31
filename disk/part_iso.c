@@ -25,13 +25,7 @@
 #include <command.h>
 #include "part_iso.h"
 
-#if defined(CONFIG_CMD_IDE) || \
-    defined(CONFIG_CMD_MG_DISK) || \
-    defined(CONFIG_CMD_SCSI) || \
-    defined(CONFIG_CMD_SATA) || \
-    defined(CONFIG_CMD_USB) || \
-    defined(CONFIG_MMC) || \
-    defined(CONFIG_SYSTEMACE)
+#ifdef HAVE_BLOCK_DEVICE
 
 /* #define	ISO_PART_DEBUG */
 
@@ -78,6 +72,9 @@ int get_partition_info_iso_verb(block_dev_desc_t * dev_desc, int part_num, disk_
 	iso_pri_rec_t *ppr = (iso_pri_rec_t	*)tmpbuf;	/* primary desc */
 	iso_val_entry_t *pve = (iso_val_entry_t *)tmpbuf;
 	iso_init_def_entry_t *pide;
+
+	if (dev_desc->blksz != CD_SECTSIZE)
+		return -1;
 
 	/* the first sector (sector 0x10) must be a primary volume desc */
 	blkaddr=PVD_OFFSET;
@@ -252,8 +249,8 @@ void print_part_iso(block_dev_desc_t * dev_desc)
 	printf("Part   Start     Sect x Size Type\n");
 	i=0;
 	do {
-		printf (" %2d %8ld %8ld %6ld %.32s\n",
-			i, info.start, info.size, info.blksz, info.type);
+		printf(" %2d " LBAFU " " LBAFU " %6ld %.32s\n",
+		       i, info.start, info.size, info.blksz, info.type);
 		i++;
 	} while (get_partition_info_iso_verb(dev_desc,i,&info,0)!=-1);
 }

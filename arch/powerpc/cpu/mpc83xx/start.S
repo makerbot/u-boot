@@ -30,7 +30,9 @@
 #include <asm-offsets.h>
 #include <config.h>
 #include <mpc83xx.h>
-#include <timestamp.h>
+#ifndef  CONFIG_IDENT_STRING
+#define  CONFIG_IDENT_STRING "MPC83XX"
+#endif
 #include <version.h>
 
 #define CONFIG_83XX	1		/* needed for Linux kernel header files*/
@@ -42,10 +44,6 @@
 #include <asm/cache.h>
 #include <asm/mmu.h>
 #include <asm/u-boot.h>
-
-#ifndef  CONFIG_IDENT_STRING
-#define  CONFIG_IDENT_STRING "MPC83XX"
-#endif
 
 /* We don't want the  MMU yet.
  */
@@ -60,7 +58,13 @@
 #define MSR_KERNEL (MSR_FP|MSR_ME|MSR_RI)
 #endif
 
-#if !defined(CONFIG_NAND_SPL) && !defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_NAND_SPL) || \
+	(defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_INIT_MINIMAL))
+#define MINIMAL_SPL
+#endif
+
+#if !defined(CONFIG_SPL_BUILD) && !defined(CONFIG_NAND_SPL) && \
+	!defined(CONFIG_SYS_RAMBOOT)
 #define CONFIG_SYS_FLASHBOOT
 #endif
 
@@ -72,9 +76,9 @@
 	START_GOT
 	GOT_ENTRY(_GOT2_TABLE_)
 	GOT_ENTRY(__bss_start)
-	GOT_ENTRY(_end)
+	GOT_ENTRY(__bss_end)
 
-#ifndef CONFIG_NAND_SPL
+#ifndef MINIMAL_SPL
 	GOT_ENTRY(_FIXUP_TABLE_)
 	GOT_ENTRY(_start)
 	GOT_ENTRY(_start_of_vectors)
@@ -107,9 +111,7 @@
 
 	.globl	version_string
 version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
-	.ascii " ", CONFIG_IDENT_STRING, "\0"
+	.ascii U_BOOT_VERSION_STRING, "\0"
 
 	.align 2
 
@@ -210,7 +212,8 @@ _start: /* time t 0 */
 	/* Initialise the E300 processor core		*/
 	/*------------------------------------------*/
 
-#ifdef CONFIG_NAND_SPL
+#if (defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_MPC83XX_WAIT_FOR_NAND)) || \
+		defined(CONFIG_NAND_SPL)
 	/* The FCM begins execution after only the first page
 	 * is loaded.  Wait for the rest before branching
 	 * to another flash page.
@@ -296,7 +299,7 @@ in_flash:
 
 	/* NOTREACHED - board_init_f() does not return */
 
-#ifndef CONFIG_NAND_SPL
+#ifndef MINIMAL_SPL
 /*
  * Vector Table
  */
@@ -471,7 +474,7 @@ int_return:
 	lwz	r1,GPR1(r1)
 	SYNC
 	rfi
-#endif /* !CONFIG_NAND_SPL */
+#endif /* !MINIMAL_SPL */
 
 /*
  * This code initialises the E300 processor core
@@ -728,7 +731,7 @@ setup_bats:
  * Note: requires that all cache bits in
  * HID0 are in the low half word.
  */
-#ifndef CONFIG_NAND_SPL
+#ifndef MINIMAL_SPL
 	.globl	icache_enable
 icache_enable:
 	mfspr	r3, HID0
@@ -757,7 +760,7 @@ icache_status:
 	mfspr	r3, HID0
 	rlwinm	r3, r3, (31 - HID0_ICE_SHIFT + 1), 31, 31
 	blr
-#endif	/* !CONFIG_NAND_SPL */
+#endif	/* !MINIMAL_SPL */
 
 	.globl	dcache_enable
 dcache_enable:
@@ -940,7 +943,7 @@ in_ram:
 	stw	r0,0(r3)
 2:	bdnz	1b
 
-#ifndef CONFIG_NAND_SPL
+#ifndef MINIMAL_SPL
 	/*
 	 * Now adjust the fixups and the pointers to the fixups
 	 * in case we need to move ourselves again.
@@ -977,7 +980,7 @@ clear_bss:
 	 */
 	lwz	r4,GOT(environment)
 #else
-	lwz	r4,GOT(_end)
+	lwz	r4,GOT(__bss_end)
 #endif
 
 	cmplw	0, r3, r4
@@ -995,7 +998,7 @@ clear_bss:
 	mr	r4, r10		/* Destination Address		*/
 	bl	board_init_r
 
-#ifndef CONFIG_NAND_SPL
+#ifndef MINIMAL_SPL
 	/*
 	 * Copy exception vector code to low memory
 	 *
@@ -1065,7 +1068,7 @@ trap_init:
 	mtlr	r4			/* restore link register    */
 	blr
 
-#endif /* !CONFIG_NAND_SPL */
+#endif /* !MINIMAL_SPL */
 
 #ifdef CONFIG_SYS_INIT_RAM_LOCK
 lock_ram_in_cache:
@@ -1089,7 +1092,7 @@ lock_ram_in_cache:
 	sync
 	blr
 
-#ifndef CONFIG_NAND_SPL
+#ifndef MINIMAL_SPL
 .globl unlock_ram_in_cache
 unlock_ram_in_cache:
 	/* invalidate the INIT_RAM section */
@@ -1115,7 +1118,7 @@ unlock_ram_in_cache:
 	sync
 	mtspr	HID0, r3		/* no invalidate, unlock */
 	blr
-#endif /* !CONFIG_NAND_SPL */
+#endif /* !MINIMAL_SPL */
 #endif /* CONFIG_SYS_INIT_RAM_LOCK */
 
 #ifdef CONFIG_SYS_FLASHBOOT

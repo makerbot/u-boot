@@ -206,7 +206,6 @@
 
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1	/* MII PHY management		*/
-#define CONFIG_NET_MULTI	1
 #define CONFIG_PHY_ADDR		0x02	/* dummy setting, no EMAC0 used	*/
 #define CONFIG_PHY1_ADDR	0x03	/* dummy setting, no EMAC1 used	*/
 #define CONFIG_PHY2_ADDR	0x01	/* PHY address for EMAC2	*/
@@ -288,6 +287,7 @@
  */
 /* General PCI */
 #define CONFIG_PCI			/* include pci support		*/
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_PNP			/* do pci plug-and-play		*/
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup	*/
 #define CONFIG_SYS_PCI_TARGBASE    0x80000000	/* PCIaddr mapped to CONFIG_SYS_PCI_MEMBASE */

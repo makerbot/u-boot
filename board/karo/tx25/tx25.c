@@ -27,61 +27,83 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/imx25-pinmux.h>
-
-static void mdelay(int n)
-{
-	while (n-- > 0)
-		udelay(1000);
-}
+#include <asm/arch/iomux-mx25.h>
+#include <asm/gpio.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#ifdef CONFIG_SPL_BUILD
+void board_init_f(ulong bootflag)
+{
+	/*
+	 * copy ourselves from where we are running to where we were
+	 * linked at. Use ulong pointers as all addresses involved
+	 * are 4-byte-aligned.
+	 */
+	ulong *start_ptr, *end_ptr, *link_ptr, *run_ptr, *dst;
+	asm volatile ("ldr %0, =_start" : "=r"(start_ptr));
+	asm volatile ("ldr %0, =_end" : "=r"(end_ptr));
+	asm volatile ("ldr %0, =board_init_f" : "=r"(link_ptr));
+	asm volatile ("adr %0, board_init_f" : "=r"(run_ptr));
+	for (dst = start_ptr; dst < end_ptr; dst++)
+		*dst = *(dst+(run_ptr-link_ptr));
+	/*
+	 * branch to nand_boot's link-time address.
+	 */
+	asm volatile("ldr pc, =nand_boot");
+}
+#endif
+
 #ifdef CONFIG_FEC_MXC
+/*
+ * FIXME: need to revisit this
+ * The original code enabled PUE and 100-k pull-down without PKE, so the right
+ * value here is likely:
+ *	0 for no pull
+ * or:
+ *	PAD_CTL_PUS_100K_DOWN for 100-k pull-down
+ */
+#define FEC_OUT_PAD_CTRL	0
+
+#define GPIO_FEC_RESET_B	IMX_GPIO_NR(4, 7)
+#define GPIO_FEC_ENABLE_B	IMX_GPIO_NR(4, 9)
+
 void tx25_fec_init(void)
 {
-	struct iomuxc_mux_ctl *muxctl;
-	struct iomuxc_pad_ctl *padctl;
-	u32 val;
-	u32 gpio_mux_mode = MX25_PIN_MUX_MODE(5);
-	struct gpio_regs *gpio4 = (struct gpio_regs *)IMX_GPIO4_BASE;
-	struct gpio_regs *gpio3 = (struct gpio_regs *)IMX_GPIO3_BASE;
-	u32 saved_rdata0_mode, saved_rdata1_mode, saved_rx_dv_mode;
+	static const iomux_v3_cfg_t fec_pads[] = {
+		MX25_PAD_FEC_TX_CLK__FEC_TX_CLK,
+		MX25_PAD_FEC_RX_DV__FEC_RX_DV,
+		MX25_PAD_FEC_RDATA0__FEC_RDATA0,
+		NEW_PAD_CTRL(MX25_PAD_FEC_TDATA0__FEC_TDATA0, FEC_OUT_PAD_CTRL),
+		NEW_PAD_CTRL(MX25_PAD_FEC_TX_EN__FEC_TX_EN, FEC_OUT_PAD_CTRL),
+		NEW_PAD_CTRL(MX25_PAD_FEC_MDC__FEC_MDC, FEC_OUT_PAD_CTRL),
+		MX25_PAD_FEC_MDIO__FEC_MDIO,
+		MX25_PAD_FEC_RDATA1__FEC_RDATA1,
+		NEW_PAD_CTRL(MX25_PAD_FEC_TDATA1__FEC_TDATA1, FEC_OUT_PAD_CTRL),
+
+		NEW_PAD_CTRL(MX25_PAD_D13__GPIO_4_7, 0), /* FEC_RESET_B */
+		NEW_PAD_CTRL(MX25_PAD_D11__GPIO_4_9, 0), /* FEC_ENABLE_B */
+	};
+
+	static const iomux_v3_cfg_t fec_cfg_pads[] = {
+		MX25_PAD_FEC_RDATA0__GPIO_3_10,
+		MX25_PAD_FEC_RDATA1__GPIO_3_11,
+		MX25_PAD_FEC_RX_DV__GPIO_3_12,
+	};
 
 	debug("tx25_fec_init\n");
-	/*
-	 * fec pin init is generic
-	 */
-	mx25_fec_init_pins();
-
-	/*
-	 * Set up the FEC_RESET_B and FEC_ENABLE GPIO pins.
-	 *
-	 * FEC_RESET_B: gpio4[7] is ALT 5 mode of pin D13
-	 * FEC_ENABLE_B: gpio4[9] is ALT 5 mode of pin D11
-	 */
-	muxctl = (struct iomuxc_mux_ctl *)IMX_IOPADMUX_BASE;
-	padctl = (struct iomuxc_pad_ctl *)IMX_IOPADCTL_BASE;
-
-	writel(gpio_mux_mode, &muxctl->pad_d13);
-	writel(gpio_mux_mode, &muxctl->pad_d11);
-
-	writel(0x0, &padctl->pad_d13);
-	writel(0x0, &padctl->pad_d11);
+	imx_iomux_v3_setup_multiple_pads(fec_pads, ARRAY_SIZE(fec_pads));
 
 	/* drop PHY power and assert reset (low) */
-	val = readl(&gpio4->dr) & ~((1 << 7) | (1 << 9));
-	writel(val, &gpio4->dr);
-	val = readl(&gpio4->dir) | (1 << 7) | (1 << 9);
-	writel(val, &gpio4->dir);
+	gpio_direction_output(GPIO_FEC_RESET_B, 0);
+	gpio_direction_output(GPIO_FEC_ENABLE_B, 0);
 
 	mdelay(5);
 
 	debug("resetting phy\n");
 
 	/* turn on PHY power leaving reset asserted */
-	val = readl(&gpio4->dr) | 1 << 9;
-	writel(val, &gpio4->dr);
+	gpio_set_value(GPIO_FEC_ENABLE_B, 1);
 
 	mdelay(10);
 
@@ -98,55 +120,71 @@ void tx25_fec_init(void)
 	 *  RMII mode is selected by FEC_RX_DV which is GPIO 3_12 in mux mode
 	 */
 	/*
-	 * save three current mux modes and set each to gpio mode
+	 * set each mux mode to gpio mode
 	 */
-	saved_rdata0_mode = readl(&muxctl->pad_fec_rdata0);
-	saved_rdata1_mode = readl(&muxctl->pad_fec_rdata1);
-	saved_rx_dv_mode = readl(&muxctl->pad_fec_rx_dv);
-
-	writel(gpio_mux_mode, &muxctl->pad_fec_rdata0);
-	writel(gpio_mux_mode, &muxctl->pad_fec_rdata1);
-	writel(gpio_mux_mode, &muxctl->pad_fec_rx_dv);
+	imx_iomux_v3_setup_multiple_pads(fec_cfg_pads,
+						ARRAY_SIZE(fec_cfg_pads));
 
 	/*
 	 * set each to 1 and make each an output
 	 */
-	val = readl(&gpio3->dr) | (1 << 10) | (1 << 11) | (1 << 12);
-	writel(val, &gpio3->dr);
-	val = readl(&gpio3->dir) | (1 << 10) | (1 << 11) | (1 << 12);
-	writel(val, &gpio3->dir);
+	gpio_direction_output(IMX_GPIO_NR(3, 10), 1);
+	gpio_direction_output(IMX_GPIO_NR(3, 11), 1);
+	gpio_direction_output(IMX_GPIO_NR(3, 12), 1);
 
 	mdelay(22);		/* this value came from RedBoot */
 
 	/*
 	 * deassert PHY reset
 	 */
-	val = readl(&gpio4->dr) | 1 << 7;
-	writel(val, &gpio4->dr);
-	writel(val, &gpio4->dr);
+	gpio_set_value(GPIO_FEC_RESET_B, 1);
 
 	mdelay(5);
 
 	/*
 	 * set FEC pins back
 	 */
-	writel(saved_rdata0_mode, &muxctl->pad_fec_rdata0);
-	writel(saved_rdata1_mode, &muxctl->pad_fec_rdata1);
-	writel(saved_rx_dv_mode, &muxctl->pad_fec_rx_dv);
+	imx_iomux_v3_setup_multiple_pads(fec_pads, ARRAY_SIZE(fec_pads));
 }
 #else
 #define tx25_fec_init()
 #endif
 
+#ifdef CONFIG_MXC_UART
+/*
+ * Set up input pins with hysteresis and 100-k pull-ups
+ */
+#define UART1_IN_PAD_CTRL	(PAD_CTL_HYS | PAD_CTL_PUS_100K_UP)
+/*
+ * FIXME: need to revisit this
+ * The original code enabled PUE and 100-k pull-down without PKE, so the right
+ * value here is likely:
+ *	0 for no pull
+ * or:
+ *	PAD_CTL_PUS_100K_DOWN for 100-k pull-down
+ */
+#define UART1_OUT_PAD_CTRL	0
+
+static void tx25_uart1_init(void)
+{
+	static const iomux_v3_cfg_t uart1_pads[] = {
+		NEW_PAD_CTRL(MX25_PAD_UART1_RXD__UART1_RXD, UART1_IN_PAD_CTRL),
+		NEW_PAD_CTRL(MX25_PAD_UART1_TXD__UART1_TXD, UART1_OUT_PAD_CTRL),
+		NEW_PAD_CTRL(MX25_PAD_UART1_RTS__UART1_RTS, UART1_OUT_PAD_CTRL),
+		NEW_PAD_CTRL(MX25_PAD_UART1_CTS__UART1_CTS, UART1_IN_PAD_CTRL),
+	};
+
+	imx_iomux_v3_setup_multiple_pads(uart1_pads, ARRAY_SIZE(uart1_pads));
+}
+#else
+#define tx25_uart1_init()
+#endif
+
 int board_init()
 {
-#ifdef CONFIG_MXC_UART
-	extern void mx25_uart_init_pins(void);
+	tx25_uart1_init();
 
-	mx25_uart_init_pins();
-#endif
 	/* board id for linux */
-	gd->bd->bi_arch_number = MACH_TYPE_TX25;
 	gd->bd->bi_boot_params = PHYS_SDRAM_1 + 0x100;
 	return 0;
 }
@@ -157,10 +195,10 @@ int board_late_init(void)
 	return 0;
 }
 
-int dram_init (void)
+int dram_init(void)
 {
 	/* dram_init must store complete ramsize in gd->ram_size */
-	gd->ram_size = get_ram_size((volatile void *)PHYS_SDRAM_1,
+	gd->ram_size = get_ram_size((void *)PHYS_SDRAM_1,
 				PHYS_SDRAM_1_SIZE);
 	return 0;
 }
@@ -168,11 +206,11 @@ int dram_init (void)
 void dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = get_ram_size((volatile void *)PHYS_SDRAM_1,
+	gd->bd->bi_dram[0].size = get_ram_size((void *)PHYS_SDRAM_1,
 			PHYS_SDRAM_1_SIZE);
 #if CONFIG_NR_DRAM_BANKS > 1
 	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
-	gd->bd->bi_dram[1].size = get_ram_size((volatile void *)PHYS_SDRAM_2,
+	gd->bd->bi_dram[1].size = get_ram_size((void *)PHYS_SDRAM_2,
 			PHYS_SDRAM_2_SIZE);
 #else
 

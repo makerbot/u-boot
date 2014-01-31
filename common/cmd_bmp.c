@@ -31,21 +31,27 @@
 #include <command.h>
 #include <asm/byteorder.h>
 #include <malloc.h>
+#include <splash.h>
+#include <video.h>
 
 static int bmp_info (ulong addr);
-static int bmp_display (ulong addr, int x, int y);
 
 /*
  * Allocate and decompress a BMP image using gunzip().
  *
- * Returns a pointer to the decompressed image data. Must be freed by
- * the caller after use.
+ * Returns a pointer to the decompressed image data. This pointer is
+ * aligned to 32-bit-aligned-address + 2.
+ * See doc/README.displaying-bmps for explanation.
+ *
+ * The allocation address is passed to 'alloc_addr' and must be freed
+ * by the caller after use.
  *
  * Returns NULL if decompression failed, or if the decompressed data
  * didn't contain a valid BMP signature.
  */
 #ifdef CONFIG_VIDEO_BMP_GZIP
-bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
+bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp,
+			void **alloc_addr)
 {
 	void *dst;
 	unsigned long len;
@@ -55,20 +61,25 @@ bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
 	 * Decompress bmp image
 	 */
 	len = CONFIG_SYS_VIDEO_LOGO_MAX_SIZE;
-	dst = malloc(CONFIG_SYS_VIDEO_LOGO_MAX_SIZE);
+	/* allocate extra 3 bytes for 32-bit-aligned-address + 2 alignment */
+	dst = malloc(CONFIG_SYS_VIDEO_LOGO_MAX_SIZE + 3);
 	if (dst == NULL) {
 		puts("Error: malloc in gunzip failed!\n");
 		return NULL;
 	}
-	if (gunzip(dst, CONFIG_SYS_VIDEO_LOGO_MAX_SIZE, (uchar *)addr, &len) != 0) {
+
+	bmp = dst;
+
+	/* align to 32-bit-aligned-address + 2 */
+	bmp = (bmp_image_t *)((((unsigned int)dst + 1) & ~3) + 2);
+
+	if (gunzip(bmp, CONFIG_SYS_VIDEO_LOGO_MAX_SIZE, (uchar *)addr, &len) != 0) {
 		free(dst);
 		return NULL;
 	}
 	if (len == CONFIG_SYS_VIDEO_LOGO_MAX_SIZE)
 		puts("Image could be truncated"
 				" (increase CONFIG_SYS_VIDEO_LOGO_MAX_SIZE)!\n");
-
-	bmp = dst;
 
 	/*
 	 * Check for bmp mark 'BM'
@@ -79,12 +90,14 @@ bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
 		return NULL;
 	}
 
-	puts("Gzipped BMP image detected!\n");
+	debug("Gzipped BMP image detected!\n");
 
+	*alloc_addr = dst;
 	return bmp;
 }
 #else
-bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
+bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp,
+			void **alloc_addr)
 {
 	return NULL;
 }
@@ -102,7 +115,7 @@ static int do_bmp_info(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[
 		addr = simple_strtoul(argv[1], NULL, 16);
 		break;
 	default:
-		return cmd_usage(cmdtp);
+		return CMD_RET_USAGE;
 	}
 
 	return (bmp_info(addr));
@@ -112,6 +125,8 @@ static int do_bmp_display(cmd_tbl_t * cmdtp, int flag, int argc, char * const ar
 {
 	ulong addr;
 	int x = 0, y = 0;
+
+	splash_get_pos(&x, &y);
 
 	switch (argc) {
 	case 1:		/* use load_addr as default address */
@@ -126,7 +141,7 @@ static int do_bmp_display(cmd_tbl_t * cmdtp, int flag, int argc, char * const ar
 	        y = simple_strtoul(argv[3], NULL, 10);
 	        break;
 	default:
-		return cmd_usage(cmdtp);
+		return CMD_RET_USAGE;
 	}
 
 	 return (bmp_display(addr, x, y));
@@ -166,7 +181,7 @@ static int do_bmp(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (c)
 		return  c->cmd(cmdtp, flag, argc, argv);
 	else
-		return cmd_usage(cmdtp);
+		return CMD_RET_USAGE;
 }
 
 U_BOOT_CMD(
@@ -189,11 +204,12 @@ U_BOOT_CMD(
 static int bmp_info(ulong addr)
 {
 	bmp_image_t *bmp=(bmp_image_t *)addr;
+	void *bmp_alloc_addr = NULL;
 	unsigned long len;
 
 	if (!((bmp->header.signature[0]=='B') &&
 	      (bmp->header.signature[1]=='M')))
-		bmp = gunzip_bmp(addr, &len);
+		bmp = gunzip_bmp(addr, &len, &bmp_alloc_addr);
 
 	if (bmp == NULL) {
 		printf("There is no valid bmp file at the given address\n");
@@ -205,8 +221,8 @@ static int bmp_info(ulong addr)
 	printf("Bits per pixel: %d\n", le16_to_cpu(bmp->header.bit_count));
 	printf("Compression   : %d\n", le32_to_cpu(bmp->header.compression));
 
-	if ((unsigned long)bmp != addr)
-		free(bmp);
+	if (bmp_alloc_addr)
+		free(bmp_alloc_addr);
 
 	return(0);
 }
@@ -221,15 +237,16 @@ static int bmp_info(ulong addr)
  * Return:      None
  *
  */
-static int bmp_display(ulong addr, int x, int y)
+int bmp_display(ulong addr, int x, int y)
 {
 	int ret;
 	bmp_image_t *bmp = (bmp_image_t *)addr;
+	void *bmp_alloc_addr = NULL;
 	unsigned long len;
 
 	if (!((bmp->header.signature[0]=='B') &&
 	      (bmp->header.signature[1]=='M')))
-		bmp = gunzip_bmp(addr, &len);
+		bmp = gunzip_bmp(addr, &len, &bmp_alloc_addr);
 
 	if (!bmp) {
 		printf("There is no valid bmp file at the given address\n");
@@ -237,19 +254,15 @@ static int bmp_display(ulong addr, int x, int y)
 	}
 
 #if defined(CONFIG_LCD)
-	extern int lcd_display_bitmap (ulong, int, int);
-
-	ret = lcd_display_bitmap ((unsigned long)bmp, x, y);
+	ret = lcd_display_bitmap((ulong)bmp, x, y);
 #elif defined(CONFIG_VIDEO)
-	extern int video_display_bitmap (ulong, int, int);
-
-	ret = video_display_bitmap ((unsigned long)bmp, x, y);
+	ret = video_display_bitmap((unsigned long)bmp, x, y);
 #else
 # error bmp_display() requires CONFIG_LCD or CONFIG_VIDEO
 #endif
 
-	if ((unsigned long)bmp != addr)
-		free(bmp);
+	if (bmp_alloc_addr)
+		free(bmp_alloc_addr);
 
 	return ret;
 }

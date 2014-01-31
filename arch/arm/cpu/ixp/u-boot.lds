@@ -31,8 +31,9 @@ SECTIONS
 	. = ALIGN(4);
 	.text :
 	{
-		arch/arm/cpu/ixp/start.o(.text)
-		*(.text)
+		*(.__image_copy_start)
+		arch/arm/cpu/ixp/start.o(.text*)
+		*(.text*)
 	}
 
 	. = ALIGN(4);
@@ -40,36 +41,61 @@ SECTIONS
 
 	. = ALIGN(4);
 	.data : {
-		*(.data)
+		*(.data*)
 	}
 
 	. = ALIGN(4);
 
 	. = .;
-	__u_boot_cmd_start = .;
-	.u_boot_cmd : { *(.u_boot_cmd) }
-	__u_boot_cmd_end = .;
+
+	. = ALIGN(4);
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list*)));
+	}
 
 	. = ALIGN(4);
 
+	.image_copy_end :
+	{
+		*(.__image_copy_end)
+	}
+
+	.rel_dyn_start :
+	{
+		*(.__rel_dyn_start)
+	}
+
 	.rel.dyn : {
-		__rel_dyn_start = .;
 		*(.rel*)
-		__rel_dyn_end = .;
 	}
 
-	.dynsym : {
-		__dynsym_start = .;
-		*(.dynsym)
+	.rel_dyn_end :
+	{
+		*(.__rel_dyn_end)
 	}
 
-	.bss __rel_dyn_start (OVERLAY) : {
-		__bss_start = .;
-		*(.bss)
+	_end = .;
+
+/*
+ * Compiler-generated __bss_start and __bss_end, see arch/arm/lib/bss.c
+ * __bss_base and __bss_limit are for linker only (overlay ordering)
+ */
+
+	.bss_start __rel_dyn_start (OVERLAY) : {
+		KEEP(*(.__bss_start));
+		__bss_base = .;
+	}
+
+	.bss __bss_base (OVERLAY) : {
+		*(.bss*)
 		 . = ALIGN(4);
-		_end = .;
+		 __bss_limit = .;
+	}
+	.bss_end __bss_limit (OVERLAY) : {
+		KEEP(*(.__bss_end));
 	}
 
+	/DISCARD/ : { *(.dynsym) }
 	/DISCARD/ : { *(.dynstr*) }
 	/DISCARD/ : { *(.dynamic*) }
 	/DISCARD/ : { *(.plt*) }

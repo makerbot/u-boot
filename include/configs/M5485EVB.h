@@ -41,7 +41,6 @@
 #define CONFIG_MCFUART
 #define CONFIG_SYS_UART_PORT		(0)
 #define CONFIG_BAUDRATE		115200
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600 , 19200 , 38400 , 57600, 115200 }
 
 #define CONFIG_HW_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT	5000	/* timeout in milliseconds, max timeout is 6.71sec */
@@ -67,7 +66,6 @@
 
 #define CONFIG_FSLDMAFEC
 #ifdef CONFIG_FSLDMAFEC
-#	define CONFIG_NET_MULTI		1
 #	define CONFIG_MII		1
 #	define CONFIG_MII_INIT		1
 #	define CONFIG_HAS_ETH1
@@ -157,7 +155,7 @@
 	"load=tftp ${loadaddr) ${u-boot}\0"	\
 	"upd=run load; run prog\0"		\
 	"prog=prot off bank 1;"			\
-	"era ff800000 ff82ffff;"		\
+	"era ff800000 ff83ffff;"		\
 	"cp.b ${loadaddr} ff800000 ${filesize};"\
 	"save\0"				\
 	""
@@ -229,8 +227,9 @@
 #define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 256 kB for Monitor */
 
 #define CONFIG_SYS_BOOTPARAMS_LEN	64*1024
-#define CONFIG_SYS_MALLOC_LEN		(128 << 10)	/* Reserve 128 kB for malloc() */
 
+/* Reserve 256 kB for malloc() */
+#define CONFIG_SYS_MALLOC_LEN		(256 << 10)
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
@@ -260,10 +259,11 @@
 #endif
 
 /* Configuration for environment
- * Environment is embedded in u-boot in the second sector of the flash
+ * Environment is not embedded in u-boot. First time runing may have env
+ * crc error warning if there is no correct environment on the flash.
  */
-#define CONFIG_ENV_OFFSET		0x2000
-#define CONFIG_ENV_SECT_SIZE	0x2000
+#define CONFIG_ENV_OFFSET		0x40000
+#define CONFIG_ENV_SECT_SIZE	0x10000
 #define CONFIG_ENV_IS_IN_FLASH	1
 
 /*-----------------------------------------------------------------------

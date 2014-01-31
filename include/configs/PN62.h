@@ -76,7 +76,7 @@
 
 #define CONFIG_SERVERIP		10.0.0.201
 #define CONFIG_IPADDR		10.0.0.200
-#define CONFIG_ROOTPATH		/opt/eldk/ppc_82xx
+#define CONFIG_ROOTPATH		"/opt/eldk/ppc_82xx"
 #define CONFIG_NETMASK		255.255.255.0
 #undef CONFIG_BOOTARGS
 #if 0
@@ -122,6 +122,7 @@
  * PCI stuff
  */
 #define CONFIG_PCI				/* include pci support		*/
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_PNP				/* we need Plug 'n Play		*/
 #if 0
 #define CONFIG_PCI_SCAN_SHOW			/* show PCI auto-scan at boot	*/
@@ -130,7 +131,6 @@
 /*
  * Networking stuff
  */
-#define CONFIG_NET_MULTI			/* Multi ethernet cards support */
 
 #define CONFIG_PCNET				/* there are 2 AMD PCnet 79C973	*/
 #define CONFIG_PCNET_79C973
@@ -172,7 +172,6 @@
 /*
  * Serial port configuration
  */
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL

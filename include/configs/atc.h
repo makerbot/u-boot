@@ -72,7 +72,6 @@
 #undef	CONFIG_ETHER_NONE		/* define if ether on something else */
 #define CONFIG_ETHER_ON_FCC
 
-#define	CONFIG_NET_MULTI
 #define CONFIG_ETHER_ON_FCC2
 
 /*
@@ -172,8 +171,6 @@
 
 #define	CONFIG_SYS_HZ		1000		/* decrementer freq: 1 ms ticks	*/
 
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
-
 #define	CONFIG_SYS_RESET_ADDRESS 0xFFF00100	/* "bad" address		*/
 
 #define CONFIG_SYS_ALLOC_DPRAM
@@ -266,6 +263,7 @@
 #endif
 
 #define	CONFIG_PCI
+#define CONFIG_PCI_INDIRECT_BRIDGE
 #define	CONFIG_PCI_PNP
 #define	CONFIG_SYS_PCI_MSTR_IO_BUS	0x00000000	/* PCI base   */
 
@@ -485,6 +483,7 @@
  *-----------------------------------------------------------------------
  */
 
+#define CONFIG_IDE_PREINIT	1	/* Use preinit IDE hook */
 #define CONFIG_IDE_8xx_PCCARD	1	/* Use IDE with PC Card Adapter */
 
 #undef	CONFIG_IDE_8xx_DIRECT		/* Direct IDE	 not supported	*/

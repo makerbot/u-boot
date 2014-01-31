@@ -25,19 +25,13 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
-COBJS	:= ca9x4_ct_vxp.o
+COBJS	:= vexpress_common.o
 
 SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 
 $(LIB):	$(obj).depend $(OBJS)
 	$(call cmd_link_o_target, $(OBJS))
-
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

@@ -48,25 +48,26 @@
  *-------------------------------------------------------------------------------
  */
 
-/*  U-Boot - Startup Code for AMCC 4xx PowerPC based Embedded Boards
+/*
+ * Startup code for IBM/AMCC PowerPC 4xx (PPC4xx) based boards
  *
+ * The following description only applies to the NOR flash style booting.
+ * NAND booting is different. For more details about NAND booting on 4xx
+ * take a look at doc/README.nand-boot-ppc440.
  *
- *  The processor starts at 0xfffffffc and the code is executed
- *  from flash/rom.
- *  in memory, but as long we don't jump around before relocating.
- *  board_init lies at a quite high address and when the cpu has
- *  jumped there, everything is ok.
- *  This works because the cpu gives the FLASH (CS0) the whole
- *  address space at startup, and board_init lies as a echo of
- *  the flash somewhere up there in the memorymap.
- *
- *  board_init will change CS0 to be positioned at the correct
- *  address and (s)dram will be positioned at address 0
+ * The CPU starts at address 0xfffffffc (last word in the address space).
+ * The U-Boot image therefore has to be located in the "upper" area of the
+ * flash (e.g. 512MiB - 0xfff80000 ... 0xffffffff). The default value for
+ * the boot chip-select (CS0) is quite big and covers this area. On the
+ * 405EX this is for example 0xffe00000 ... 0xffffffff. U-Boot will
+ * reconfigure this CS0 (and other chip-selects as well when configured
+ * this way) in the boot process to the "correct" values matching the
+ * board layout.
  */
+
 #include <asm-offsets.h>
 #include <config.h>
 #include <asm/ppc4xx.h>
-#include <timestamp.h>
 #include <version.h>
 
 #define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file	*/
@@ -77,10 +78,6 @@
 #include <asm/cache.h>
 #include <asm/mmu.h>
 #include <asm/ppc4xx-isram.h>
-
-#ifndef	 CONFIG_IDENT_STRING
-#define	 CONFIG_IDENT_STRING ""
-#endif
 
 #ifdef CONFIG_SYS_INIT_DCACHE_CS
 # if (CONFIG_SYS_INIT_DCACHE_CS == 0)
@@ -235,7 +232,7 @@
  *
  * Use r12 to access the GOT
  */
-#if !defined(CONFIG_NAND_SPL)
+#if !defined(CONFIG_NAND_SPL) && !defined(CONFIG_SPL_BUILD)
 	START_GOT
 	GOT_ENTRY(_GOT2_TABLE_)
 	GOT_ENTRY(_FIXUP_TABLE_)
@@ -246,12 +243,13 @@
 	GOT_ENTRY(transfer_to_handler)
 
 	GOT_ENTRY(__init_end)
-	GOT_ENTRY(_end)
+	GOT_ENTRY(__bss_end)
 	GOT_ENTRY(__bss_start)
 	END_GOT
 #endif /* CONFIG_NAND_SPL */
 
-#if defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
+#if defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL) && \
+	!defined(CONFIG_SPL_BUILD)
 	/*
 	 * NAND U-Boot image is started from offset 0
 	 */
@@ -265,12 +263,24 @@
 	/* NOTREACHED - board_init_f() does not return */
 #endif
 
-#if defined(CONFIG_SYS_RAMBOOT)
+#if defined(CONFIG_SYS_RAMBOOT) || defined(CONFIG_BOOT_FROM_XMD)
 	/*
 	 * 4xx RAM-booting U-Boot image is started from offset 0
 	 */
 	.text
 	bl	_start_440
+#endif
+
+#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
+	/*
+	 * This is the entry of the real U-Boot from a board port
+	 * that supports SPL booting on the PPC4xx. We only need
+	 * to call board_init_f() here. Everything else has already
+	 * been done in the SPL u-boot version.
+	 */
+	GET_GOT			/* initialize GOT access		*/
+	bl	board_init_f	/* run 1st part of board init code (in Flash)*/
+	/* NOTREACHED - board_init_f() does not return */
 #endif
 
 /*
@@ -542,14 +552,12 @@ tlbnx2:	addi	r4,r4,1		/* Next TLB */
  * r3 - 1st arg to board_init(): IMMP pointer
  * r4 - 2nd arg to board_init(): boot flag
  */
-#ifndef CONFIG_NAND_SPL
+#if !defined(CONFIG_NAND_SPL) && !defined(CONFIG_SPL_BUILD)
 	.text
 	.long	0x27051956		/* U-Boot Magic Number			*/
 	.globl	version_string
 version_string:
-	.ascii U_BOOT_VERSION
-	.ascii " (", U_BOOT_DATE, " - ", U_BOOT_TIME, ")"
-	.ascii CONFIG_IDENT_STRING, "\0"
+	.ascii U_BOOT_VERSION_STRING, "\0"
 
 	. = EXC_OFF_SYS_RESET
 	.globl	_start_of_vectors
@@ -616,6 +624,18 @@ _end_of_vectors:
 #endif
 	.globl	_start
 _start:
+
+#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
+	/*
+	 * This is the entry of the real U-Boot from a board port
+	 * that supports SPL booting on the PPC4xx. We only need
+	 * to call board_init_f() here. Everything else has already
+	 * been done in the SPL u-boot version.
+	 */
+	GET_GOT			/* initialize GOT access		*/
+	bl	board_init_f	/* run 1st part of board init code (in Flash)*/
+	/* NOTREACHED - board_init_f() does not return */
+#endif
 
 /*****************************************************************************/
 #if defined(CONFIG_440)
@@ -801,7 +821,9 @@ _start:
 #ifdef CONFIG_NAND_SPL
 	bl	nand_boot_common	/* will not return */
 #else
+#ifndef CONFIG_SPL_BUILD
 	GET_GOT
+#endif
 
 	bl	cpu_init_f	/* run low-level CPU init code	   (from Flash) */
 	bl	board_init_f
@@ -809,114 +831,6 @@ _start:
 #endif
 
 #endif /* CONFIG_440 */
-
-/*****************************************************************************/
-#ifdef CONFIG_IOP480
-	/*----------------------------------------------------------------------- */
-	/* Set up some machine state registers. */
-	/*----------------------------------------------------------------------- */
-	addi	r0,r0,0x0000		/* initialize r0 to zero */
-	mtspr	SPRN_ESR,r0		/* clear Exception Syndrome Reg */
-	mttcr	r0			/* timer control register */
-	mtexier r0			/* disable all interrupts */
-	addis	r4,r0,0xFFFF		/* set r4 to 0xFFFFFFFF (status in the */
-	ori	r4,r4,0xFFFF		/* dbsr is cleared by setting bits to 1) */
-	mtdbsr	r4			/* clear/reset the dbsr */
-	mtexisr r4			/* clear all pending interrupts */
-	addis	r4,r0,0x8000
-	mtexier r4			/* enable critical exceptions */
-	addis	r4,r0,0x0000		/* assume 403GCX - enable core clk */
-	ori	r4,r4,0x4020		/* dbling (no harm done on GA and GC */
-	mtiocr	r4			/* since bit not used) & DRC to latch */
-					/* data bus on rising edge of CAS */
-	/*----------------------------------------------------------------------- */
-	/* Clear XER. */
-	/*----------------------------------------------------------------------- */
-	mtxer	r0
-	/*----------------------------------------------------------------------- */
-	/* Invalidate i-cache and d-cache TAG arrays. */
-	/*----------------------------------------------------------------------- */
-	addi	r3,0,1024		/* 1/4 of I-cache size, half of D-cache */
-	addi	r4,0,1024		/* 1/4 of I-cache */
-..cloop:
-	iccci	0,r3
-	iccci	r4,r3
-	dccci	0,r3
-	addic.	r3,r3,-16		/* move back one cache line */
-	bne	..cloop			/* loop back to do rest until r3 = 0 */
-
-	/* */
-	/* initialize IOP480 so it can read 1 MB code area for SRAM spaces */
-	/* this requires enabling MA[17..0], by default only MA[12..0] are enabled. */
-	/* */
-
-	/* first copy IOP480 register base address into r3 */
-	addis	r3,0,0x5000		/* IOP480 register base address hi */
-/*	ori	r3,r3,0x0000		/  IOP480 register base address lo */
-
-#ifdef CONFIG_ADCIOP
-	/* use r4 as the working variable */
-	/* turn on CS3 (LOCCTL.7) */
-	lwz	r4,0x84(r3)		/* LOCTL is at offset 0x84 */
-	andi.	r4,r4,0xff7f		/* make bit 7 = 0 -- CS3 mode */
-	stw	r4,0x84(r3)		/* LOCTL is at offset 0x84 */
-#endif
-
-#ifdef CONFIG_DASA_SIM
-	/* use r4 as the working variable */
-	/* turn on MA17 (LOCCTL.7) */
-	lwz	r4,0x84(r3)		/* LOCTL is at offset 0x84 */
-	ori	r4,r4,0x80		/* make bit 7 = 1 -- MA17 mode */
-	stw	r4,0x84(r3)		/* LOCTL is at offset 0x84 */
-#endif
-
-	/* turn on MA16..13 (LCS0BRD.12 = 0) */
-	lwz	r4,0x100(r3)		/* LCS0BRD is at offset 0x100 */
-	andi.	r4,r4,0xefff		/* make bit 12 = 0 */
-	stw	r4,0x100(r3)		/* LCS0BRD is at offset 0x100 */
-
-	/* make sure above stores all comlete before going on */
-	sync
-
-	/* last thing, set local init status done bit (DEVINIT.31) */
-	lwz	r4,0x80(r3)		/* DEVINIT is at offset 0x80 */
-	oris	r4,r4,0x8000		/* make bit 31 = 1 */
-	stw	r4,0x80(r3)		/* DEVINIT is at offset 0x80 */
-
-	/* clear all pending interrupts and disable all interrupts */
-	li	r4,-1			/* set p1 to 0xffffffff */
-	stw	r4,0x1b0(r3)		/* clear all pending interrupts */
-	stw	r4,0x1b8(r3)		/* clear all pending interrupts */
-	li	r4,0			/* set r4 to 0 */
-	stw	r4,0x1b4(r3)		/* disable all interrupts */
-	stw	r4,0x1bc(r3)		/* disable all interrupts */
-
-	/* make sure above stores all comlete before going on */
-	sync
-
-	/* Set-up icache cacheability. */
-	lis	r1, CONFIG_SYS_ICACHE_SACR_VALUE@h
-	ori	r1, r1, CONFIG_SYS_ICACHE_SACR_VALUE@l
-	mticcr	r1
-	isync
-
-	/* Set-up dcache cacheability. */
-	lis	r1, CONFIG_SYS_DCACHE_SACR_VALUE@h
-	ori	r1, r1, CONFIG_SYS_DCACHE_SACR_VALUE@l
-	mtdccr	r1
-
-	addis	r1,r0,CONFIG_SYS_INIT_RAM_ADDR@h
-	ori	r1,r1,CONFIG_SYS_INIT_SP_OFFSET /* set up the stack to SDRAM */
-	li	r0, 0			/* Make room for stack frame header and */
-	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
-	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
-
-	GET_GOT			/* initialize GOT access			*/
-
-	bl	board_init_f	/* run first part of init code (from Flash)	*/
-	/* NOTREACHED - board_init_f() does not return */
-
-#endif	/* CONFIG_IOP480 */
 
 /*****************************************************************************/
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || \
@@ -1193,7 +1107,7 @@ _start:
 	/*----------------------------------------------------------------------- */
 
 
-#ifndef CONFIG_NAND_SPL
+#if !defined(CONFIG_NAND_SPL) && !defined(CONFIG_SPL_BUILD)
 /*
  * This code finishes saving the registers to the exception frame
  * and jumps to the appropriate handler for the exception.
@@ -1375,6 +1289,7 @@ in32r:
 	lwbrx	r3,r0,r3
 	blr
 
+#if !defined(CONFIG_SPL_BUILD)
 /*
  * void relocate_code (addr_sp, gd, addr_moni)
  *
@@ -1622,7 +1537,7 @@ clear_bss:
 	 * Now clear BSS segment
 	 */
 	lwz	r3,GOT(__bss_start)
-	lwz	r4,GOT(_end)
+	lwz	r4,GOT(__bss_end)
 
 	cmplw	0, r3, r4
 	beq	7f
@@ -1739,6 +1654,7 @@ __440_msr_continue:
 
 	mtlr	r4			/* restore link register	*/
 	blr
+#endif /* CONFIG_SPL_BUILD */
 
 #if defined(CONFIG_440)
 /*----------------------------------------------------------------------------+

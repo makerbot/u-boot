@@ -16,11 +16,8 @@
  * bcc and gcc. */
 
 #include <linux/types.h>
-#if 0
-#include <assert.h>
-#else
-#define assert(arg)
-#endif
+#include <common.h>
+#include <exports.h>
 
 void qsort(void  *base,
 	   size_t nel,
@@ -66,4 +63,9 @@ void qsort(void  *base,
 			wgap = (wgap - width)/3;
 		} while (wgap);
 	}
+}
+
+int strcmp_compar(const void *p1, const void *p2)
+{
+	return strcmp(*(const char **)p1, *(const char **)p2);
 }

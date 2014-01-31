@@ -380,7 +380,7 @@ static unsigned long strfractoint(char *strptr)
 {
 	int i, j;
 	int mulconst;
-	int intarr_len, no_dec = 0;
+	int no_dec = 0;
 	unsigned long intval = 0, decval = 0;
 	char intarr[3], decarr[3];
 
@@ -399,8 +399,6 @@ static unsigned long strfractoint(char *strptr)
 		i++;
 	}
 
-	/* Assign length of integer part to intarr_len. */
-	intarr_len = i;
 	intarr[i] = '\0';
 
 	if (no_dec) {
@@ -482,6 +480,7 @@ static int pixis_reset_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const ar
 	    ||	unknown_param) {
 #ifdef CONFIG_SYS_LONGHELP
 		puts(cmdtp->help);
+		putc('\n');
 #endif
 		return 1;
 	}
@@ -514,6 +513,7 @@ static int pixis_reset_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const ar
 		      && set_px_mpxpll(mpxpll))) {
 #ifdef CONFIG_SYS_LONGHELP
 			puts(cmdtp->help);
+			putc('\n');
 #endif
 			return 1;
 		}

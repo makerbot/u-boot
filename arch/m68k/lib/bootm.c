@@ -71,43 +71,37 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 	int ret;
 
 	ulong cmd_start, cmd_end;
-	ulong bootmap_base;
 	bd_t  *kbd;
 	void  (*kernel) (bd_t *, ulong, ulong, ulong, ulong);
 	struct lmb *lmb = &images->lmb;
 
+	/*
+	 * allow the PREP bootm subcommand, it is required for bootm to work
+	 */
+	if (flag & BOOTM_STATE_OS_PREP)
+		return 0;
+
 	if ((flag != 0) && (flag != BOOTM_STATE_OS_GO))
 		return 1;
 
-	bootmap_base = getenv_bootm_low();
-
-	/* allocate space and init command line */
-	ret = boot_get_cmdline (lmb, &cmd_start, &cmd_end, bootmap_base);
-	if (ret) {
-		puts("ERROR with allocation of cmdline\n");
-		goto error;
-	}
-
 	/* allocate space for kernel copy of board info */
-	ret = boot_get_kbd (lmb, &kbd, bootmap_base);
+	ret = boot_get_kbd (lmb, &kbd);
 	if (ret) {
 		puts("ERROR with allocation of kernel bd\n");
 		goto error;
 	}
 	set_clocks_in_mhz(kbd);
 
-	kernel = (void (*)(bd_t *, ulong, ulong, ulong, ulong))images->ep;
-
-	rd_len = images->rd_end - images->rd_start;
-	ret = boot_ramdisk_high (lmb, images->rd_start, rd_len,
-			&initrd_start, &initrd_end);
+	ret = image_setup_linux(images);
 	if (ret)
 		goto error;
+
+	kernel = (void (*)(bd_t *, ulong, ulong, ulong, ulong))images->ep;
 
 	debug("## Transferring control to Linux (at address %08lx) ...\n",
 	      (ulong) kernel);
 
-	show_boot_progress (15);
+	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
 
 	/*
 	 * Linux Kernel Parameters (passing board info data):

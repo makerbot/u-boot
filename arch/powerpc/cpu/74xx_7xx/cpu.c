@@ -229,13 +229,11 @@ soft_restart(unsigned long addr)
 }
 
 
-#if !defined(CONFIG_PCIPPC2) && \
-    !defined(CONFIG_BAB7xx)  && \
+#if !defined(CONFIG_BAB7xx)  && \
     !defined(CONFIG_ELPPC)   && \
     !defined(CONFIG_PPMC7XX)
 /* no generic way to do board reset. simply call soft_reset. */
-void
-do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	ulong addr;
 	/* flush and disable I/D cache */
@@ -263,7 +261,12 @@ do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	addr = CONFIG_SYS_MONITOR_BASE - sizeof (ulong);
 #endif
 	soft_restart(addr);
-	while(1);	/* not reached */
+
+	/* not reached */
+	while(1)
+		;
+
+	return 1;
 }
 #endif
 
@@ -284,13 +287,13 @@ unsigned long get_tbclk(void)
 /* ------------------------------------------------------------------------- */
 
 #if defined(CONFIG_WATCHDOG)
-#if !defined(CONFIG_PCIPPC2) && !defined(CONFIG_BAB7xx)
+#if !defined(CONFIG_BAB7xx)
 void
 watchdog_reset(void)
 {
 
 }
-#endif  /* !CONFIG_PCIPPC2 && !CONFIG_BAB7xx */
+#endif  /* !CONFIG_BAB7xx */
 #endif	/* CONFIG_WATCHDOG */
 
 /* ------------------------------------------------------------------------- */

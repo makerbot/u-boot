@@ -26,9 +26,18 @@
 #include <asm/io.h>
 
 #include <asm/arch/clk.h>
-#include <asm/arch/memory-map.h>
+#include <asm/arch/hardware.h>
 
 #include "atmel_spi.h"
+
+static int spi_has_wdrbt(struct atmel_spi_slave *slave)
+{
+	unsigned int ver;
+
+	ver = spi_readl(slave, VERSION);
+
+	return (ATMEL_SPI_VERSION_REV(ver) >= 0x210);
+}
 
 void spi_init()
 {
@@ -48,21 +57,21 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 
 	switch (bus) {
 	case 0:
-		regs = (void *)SPI0_BASE;
+		regs = (void *)ATMEL_BASE_SPI0;
 		break;
-#ifdef SPI1_BASE
+#ifdef ATMEL_BASE_SPI1
 	case 1:
-		regs = (void *)SPI1_BASE;
+		regs = (void *)ATMEL_BASE_SPI1;
 		break;
 #endif
-#ifdef SPI2_BASE
+#ifdef ATMEL_BASE_SPI2
 	case 2:
-		regs = (void *)SPI2_BASE;
+		regs = (void *)ATMEL_BASE_SPI2;
 		break;
 #endif
-#ifdef SPI3_BASE
+#ifdef ATMEL_BASE_SPI3
 	case 3:
-		regs = (void *)SPI3_BASE;
+		regs = (void *)ATMEL_BASE_SPI3;
 		break;
 #endif
 	default:
@@ -84,15 +93,16 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	if (mode & SPI_CPOL)
 		csrx |= ATMEL_SPI_CSRx_CPOL;
 
-	as = malloc(sizeof(struct atmel_spi_slave));
+	as = spi_alloc_slave(struct atmel_spi_slave, bus, cs);
 	if (!as)
 		return NULL;
 
-	as->slave.bus = bus;
-	as->slave.cs = cs;
 	as->regs = regs;
 	as->mr = ATMEL_SPI_MR_MSTR | ATMEL_SPI_MR_MODFDIS
 			| ATMEL_SPI_MR_PCS(~(1 << cs) & 0xf);
+	if (spi_has_wdrbt(as))
+		as->mr |= ATMEL_SPI_MR_WDRBT;
+
 	spi_writel(as, CSR(cs), csrx);
 
 	return &as->slave;
@@ -136,13 +146,11 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 	unsigned int	len_tx;
 	unsigned int	len_rx;
 	unsigned int	len;
-	int		ret;
 	u32		status;
 	const u8	*txp = dout;
 	u8		*rxp = din;
 	u8		value;
 
-	ret = 0;
 	if (bitlen == 0)
 		/* Finish any previously submitted transfers */
 		goto out;

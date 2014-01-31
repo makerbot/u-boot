@@ -34,11 +34,13 @@
  * Include common defines/options for all AMCC eval boards
  */
 #define CONFIG_HOSTNAME		io
-#define CONFIG_IDENT_STRING	" io 0.04"
+#define CONFIG_IDENT_STRING	" io 0.05"
 #include "amcc-common.h"
 
-#define CONFIG_BOARD_EARLY_INIT_F	/* call board_early_init_f */
-#define CONFIG_LAST_STAGE_INIT		/* call last_stage_init */
+#define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_EARLY_INIT_R
+#define CONFIG_MISC_INIT_R
+#define CONFIG_LAST_STAGE_INIT
 
 #define CONFIG_SYS_CLK_FREQ	33333333 /* external frequency to pll   */
 
@@ -47,6 +49,10 @@
  */
 #define PLLMR0_DEFAULT PLLMR0_266_133_66
 #define PLLMR1_DEFAULT PLLMR1_266_133_66
+
+#undef CONFIG_ZERO_BOOTDELAY_CHECK	/* ignore keypress on bootdelay==0 */
+#define CONFIG_AUTOBOOT_KEYED		/* use key strings to stop autoboot */
+#define CONFIG_AUTOBOOT_STOP_STR " "
 
 /* new uImage format support */
 #define CONFIG_FIT
@@ -76,6 +82,7 @@
  * Commands additional to the ones defined in amcc-common.h
  */
 #define CONFIG_CMD_CACHE
+#define CONFIG_CMD_DTT
 #undef CONFIG_CMD_EEPROM
 
 /*
@@ -229,13 +236,15 @@
 #define CONFIG_SYS_EBC_PB1CR		0x7f318000
 
 /* Memory Bank 2 (FPGA) initialization */
-#define CONFIG_SYS_FPGA_BASE		0x7f100000
+#define CONFIG_SYS_FPGA0_BASE		0x7f100000
 #define CONFIG_SYS_EBC_PB2AP		0x02025080
 /* BAS=0x7f1,BS=1MB,BU=R/W,BW=16bit */
 #define CONFIG_SYS_EBC_PB2CR		0x7f11a000
 
-#define CONFIG_SYS_FPGA_RFL_LOW		0x0000
-#define CONFIG_SYS_FPGA_RFL_HIGH	0x3ffe
+#define CONFIG_SYS_FPGA_BASE(k)		CONFIG_SYS_FPGA0_BASE
+#define CONFIG_SYS_FPGA_DONE(k)		0x0010
+
+#define CONFIG_SYS_FPGA_COUNT		1
 
 /* Memory Bank 3 (Latches) initialization */
 #define CONFIG_SYS_LATCH_BASE		0x7f200000

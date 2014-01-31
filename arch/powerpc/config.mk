@@ -23,22 +23,14 @@
 
 CROSS_COMPILE ?= ppc_8xx-
 
-STANDALONE_LOAD_ADDR = 0x40000
-
-PLATFORM_RELFLAGS += -mrelocatable -ffunction-sections -fdata-sections
+CONFIG_STANDALONE_LOAD_ADDR ?= 0x40000
+LDFLAGS_FINAL += --gc-sections
+PLATFORM_RELFLAGS += -fpic -mrelocatable -ffunction-sections -fdata-sections
 PLATFORM_CPPFLAGS += -DCONFIG_PPC -D__powerpc__
-PLATFORM_LDFLAGS  += -n --gc-sections
+PLATFORM_LDFLAGS  += -n
 
-ifdef CONFIG_SYS_LDSCRIPT
-# need to strip off double quotes
-LDSCRIPT := $(subst ",,$(CONFIG_SYS_LDSCRIPT))
-else ifdef CONFIG_NAND_SPL
-LDSCRIPT := $(SRCTREE)/$(CONFIG_BOARDDIR)/u-boot-nand.lds
-else
-ifneq ($(wildcard $(SRCTREE)/arch/powerpc/cpu/$(CPU)/u-boot.lds),)
-LDSCRIPT := $(SRCTREE)/arch/powerpc/cpu/$(CPU)/u-boot.lds
-endif
-endif
+# Support generic board on PPC
+__HAVE_ARCH_GENERIC_BOARD := y
 
 #
 # When cross-compiling on NetBSD, we have to define __PPC__ or else we
@@ -52,4 +44,9 @@ PLATFORM_CPPFLAGS+= -D__PPC__
 endif
 ifeq ($(CROSS_COMPILE),powerpc-openbsd-)
 PLATFORM_CPPFLAGS+= -D__PPC__
+endif
+
+# Only test once
+ifneq ($(CONFIG_SPL_BUILD),y)
+ALL-y += checkgcc4
 endif

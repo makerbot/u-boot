@@ -27,15 +27,12 @@
 #include <common.h>
 #include <i2c.h>
 #include <asm/arch/hardware.h>
-#include "../common/misc.h"
+#include <asm/arch/davinci_misc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 int board_init(void)
 {
-	/* arch number of the board */
-	gd->bd->bi_arch_number = MACH_TYPE_SCHMOOGIE;
-
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = LINUX_BOOT_PARAM_ADDR;
 

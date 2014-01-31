@@ -29,7 +29,6 @@
 #include "srom.h"
 
 /* imports  */
-extern char console_buffer[CONFIG_SYS_CBSIZE];
 extern int l2_cache_enable (int l2control);
 extern int eepro100_write_eeprom (struct eth_device *dev, int location,
 				  int addr_len, unsigned short data);
@@ -117,7 +116,7 @@ int misc_init_r (void)
 		eerev.etheraddr[5] = 0x4D;
 
 		/* cache config word for ELPPC */
-		*(int *) &eerev.res[0] = 0;
+		memset(&eerev.res[0], 0, 4);
 
 		initSrom = 1;	/* force dialog */
 		copyNv = 1;	/* copy to nvram */
@@ -208,9 +207,14 @@ int misc_init_r (void)
 		buf[4] = eerev.etheraddr[5];
 		buf[5] = eerev.etheraddr[4];
 
-		*(unsigned short *) &buf[20] = 0x48B2;
-		*(unsigned short *) &buf[22] = 0x0004;
-		*(unsigned short *) &buf[24] = 0x1433;
+		buf[20] = 0x48;
+		buf[21] = 0xB2;
+
+		buf[22] = 0x00;
+		buf[23] = 0x04;
+
+		buf[24] = 0x14;
+		buf[25] = 0x33;
 
 		printf ("\nSRom:  Writing i82559 info ........ ");
 		if (eepro100_srom_store ((unsigned short *) buf) == -1)

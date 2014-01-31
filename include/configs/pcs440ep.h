@@ -88,7 +88,6 @@
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 #undef CONFIG_SYS_EXT_SERIAL_CLOCK		/* no external clk used		*/
 #define CONFIG_BAUDRATE		115200
-#define CONFIG_SERIAL_MULTI     1
 
 #define CONFIG_SYS_BAUDRATE_TABLE  \
     {300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200}
@@ -225,7 +224,6 @@
 
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1	/* MII PHY management		*/
-#define CONFIG_NET_MULTI        1	/* required for netconsole      */
 #define CONFIG_HAS_ETH1		1	/* add support for "eth1addr"	*/
 #define CONFIG_PHY_ADDR		1	/* PHY address, See schematics	*/
 #define CONFIG_PHY1_ADDR        2
@@ -319,6 +317,7 @@
  */
 /* General PCI */
 #define CONFIG_PCI			/* include pci support	        */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #undef  CONFIG_PCI_PNP			/* do (not) pci plug-and-play   */
 #define CONFIG_PCI_SCAN_SHOW            /* show pci devices on startup  */
 #define CONFIG_SYS_PCI_TARGBASE        0x80000000 /* PCIaddr mapped to CONFIG_SYS_PCI_MEMBASE*/

@@ -27,9 +27,8 @@
  * Board
  */
 #define CONFIG_DRIVER_TI_EMAC
-#undef CONFIG_USE_SPIFLASH
-#undef	CONFIG_SYS_USE_NOR
-#define	CONFIG_USE_NAND
+
+#define	CONFIG_SYS_USE_NAND	1
 
 /*
  * SoC Configuration
@@ -37,12 +36,15 @@
 #define CONFIG_MACH_DAVINCI_MANHATTAN_A07
 #define CONFIG_ARM926EJS		/* arm926ejs CPU core */
 #define CONFIG_SOC_DA8XX		/* TI DA8xx SoC */
+#define CONFIG_SOC_DA850		/* TI DA850 SoC */
+#define CONFIG_SYS_EXCEPTION_VECTORS_HIGH
 #define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		24000000
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SKIP_LOWLEVEL_INIT
+#define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_SYS_TEXT_BASE		0xc1080000
 
 /*
@@ -60,7 +62,13 @@
 #define CONFIG_SYS_MEMTEST_END 	(PHYS_SDRAM_1 + 0x2000000 + 16*1024*1024)
 
 #define CONFIG_NR_DRAM_BANKS	1 /* we have 1 bank of DRAM */
-#define CONFIG_STACKSIZE	(256*1024) /* regular stack */
+
+#define CONFIG_SYS_DA850_SYSCFG_SUSPSRC (	\
+	DAVINCI_SYSCFG_SUSPSRC_TIMER0 |		\
+	DAVINCI_SYSCFG_SUSPSRC_SPI1 |		\
+	DAVINCI_SYSCFG_SUSPSRC_UART1 |		\
+	DAVINCI_SYSCFG_SUSPSRC_EMAC |		\
+	DAVINCI_SYSCFG_SUSPSRC_I2C)
 
 /*
  * Serial Driver info
@@ -68,35 +76,18 @@
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	-4	/* NS16550 register size */
-#define CONFIG_SYS_NS16550_COM1	DAVINCI_UART1_BASE /* Base address of UART2 */
+#define CONFIG_SYS_NS16550_COM1	DAVINCI_UART1_BASE /* Base address of UART1 */
 #define CONFIG_SYS_NS16550_CLK	clk_get(DAVINCI_UART1_CLKID)
 #define CONFIG_CONS_INDEX	1		/* use UART0 for console */
 #define CONFIG_BAUDRATE		115200		/* Default baud rate */
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
-
-#define CONFIG_SPI
-#define CONFIG_DAVINCI_SPI
-#define CONFIG_SYS_SPI_BASE		DAVINCI_SPI1_BASE
-#define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI1_CLKID)
-#define CONFIG_SF_DEFAULT_SPEED		30000000
-#define CONFIG_ENV_SPI_MAX_HZ	CONFIG_SF_DEFAULT_SPEED
-
-/*
- * I2C Configuration
- */
-#define CONFIG_HARD_I2C
-#define CONFIG_DRIVER_DAVINCI_I2C
-#define CONFIG_SYS_I2C_SPEED		25000
-#define CONFIG_SYS_I2C_SLAVE		10 /* Bogus, master-only in U-Boot */
-#define CONFIG_SYS_I2C_EXPANDER_ADDR	0x20
 
 /*
  * Flash & Environment
  */
-#ifdef CONFIG_USE_NAND
+#ifdef CONFIG_SYS_USE_NAND
 #undef CONFIG_ENV_IS_IN_FLASH
-#define CONFIG_SYS_NAND_ONFI_DETECTION
 #define CONFIG_NAND_DAVINCI
+#define CONFIG_SYS_NAND_ONFI_DETECTION
 #define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_IS_IN_NAND		/* U-Boot env in NAND Flash  */
 #define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
@@ -110,79 +101,26 @@
 #define CONFIG_SYS_ALE_MASK		0x8
 #undef CONFIG_SYS_NAND_HW_ECC
 #define CONFIG_SYS_MAX_NAND_DEVICE	1 /* Max number of NAND devices */
-#define NAND_MAX_CHIPS			1
-/* these definitions are used for SPL */
-/*
-#define CONFIG_SYS_NAND_HW_ECC_OOBFIRST
-#define CONFIG_SYS_NAND_PAGE_SIZE	(2 << 12)
-#define CONFIG_SYS_NAND_BLOCK_SIZE	(256 << 12)
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	0xe0000
-#define CONFIG_SYS_NAND_U_BOOT_DST	0xc1180000
-#define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_NAND_U_BOOT_DST
-#define CONFIG_SYS_NAND_U_BOOT_RELOC_SP	(CONFIG_SYS_NAND_U_BOOT_DST - \
-					CONFIG_SYS_NAND_U_BOOT_SIZE - \
-					CONFIG_SYS_MALLOC_LEN -       \
-					GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_NAND_ECCPOS		{				\
-				24, 25, 26, 27, 28,			\
-				29, 30, 31, 32, 33, 34, 35, 36, 37, 38,	\
-				39, 40, 41, 42, 43, 44, 45, 46, 47, 48,	\
-				49, 50, 51, 52, 53, 54, 55, 56, 57, 58,	\
-				59, 60, 61, 62, 63 }
-#define CONFIG_SYS_NAND_PAGE_COUNT	64
-#define CONFIG_SYS_NAND_BAD_BLOCK_POS	0
-#define CONFIG_SYS_NAND_ECCSIZE		512
-#define CONFIG_SYS_NAND_ECCBYTES	10
-#define CONFIG_SYS_NAND_OOBSIZE		224
-*/
-#endif
-
-#ifdef CONFIG_SYS_USE_NOR
-#define CONFIG_ENV_IS_IN_FLASH
-#undef CONFIG_SYS_NO_FLASH
-#define CONFIG_FLASH_CFI_DRIVER
-#define CONFIG_SYS_FLASH_CFI
-#define CONFIG_SYS_FLASH_PROTECTION
-#define CONFIG_SYS_MAX_FLASH_BANKS	1 /* max number of flash banks */
-#define CONFIG_SYS_FLASH_SECT_SZ	(128 << 10) /* 128KB */
-#define CONFIG_ENV_OFFSET		(CONFIG_SYS_FLASH_SECT_SZ * 3)
-#define CONFIG_ENV_SIZE			(128 << 10)
-#define CONFIG_SYS_FLASH_BASE		DAVINCI_ASYNC_EMIF_DATA_CE2_BASE
-#define PHYS_FLASH_SIZE			(8 << 20) /* Flash size 8MB */
-#define CONFIG_SYS_MAX_FLASH_SECT ((PHYS_FLASH_SIZE/CONFIG_SYS_FLASH_SECT_SZ)\
-	       + 3)
-#define CONFIG_ENV_SECT_SIZE		CONFIG_SYS_FLASH_SECT_SZ
-#endif
-
-#ifdef CONFIG_USE_SPIFLASH
-#undef CONFIG_ENV_IS_IN_FLASH
-#undef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_IS_IN_SPI_FLASH
-#define CONFIG_ENV_SIZE			(64 << 10)
-#define CONFIG_ENV_OFFSET		(256 << 10)
-#define CONFIG_ENV_SECT_SIZE		(64 << 10)
-#define CONFIG_SYS_NO_FLASH
 #endif
 
 /*
  * Network & Ethernet Configuration
  */
 #ifdef CONFIG_DRIVER_TI_EMAC
-#define CONFIG_EMAC_MDIO_PHY_NUM	0
 #define CONFIG_MII
-#undef	CONFIG_DRIVER_TI_EMAC_USE_RMII
 #define CONFIG_BOOTP_DEFAULT
 #define CONFIG_BOOTP_DNS
 #define CONFIG_BOOTP_DNS2
 #define CONFIG_BOOTP_SEND_HOSTNAME
 #define CONFIG_NET_RETRY_COUNT	10
-#define CONFIG_NET_MULTI
 #endif
+
 
 /*
  * U-Boot general configuration
  */
 #define CONFIG_MISC_INIT_R
+#define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOOTFILE		"boot/uImage" /* Boot file name */
 #define CONFIG_SYS_PROMPT	"Manhattan > " /* Command Prompt */
 #define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
@@ -193,7 +131,6 @@
 #define CONFIG_VERSION_VARIABLE
 #define CONFIG_AUTO_COMPLETE
 #define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_SYS_LONGHELP
 #define CONFIG_CRC32_VERIFY
@@ -203,15 +140,16 @@
  * Linux Information
  */
 #define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
+#define CONFIG_HWCONFIG		/* enable hwconfig */
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS		\
-	"mem=64M@0xC0000000 console=ttyS1,115200n8 root=/dev/ram0 rw initrd=0xc1180000,"
-/*
-#define CONFIG_BOOTCOMMAND 
-*/
+  "console=ttyS1,115200n8 noinitrd ip=off mem=64M@0xC0000000 rootdelay=1 rw ubi.mtd=4,4096 " \
+    "rootfstype=ubifs root=ubi0:filesystem init=/linuxrc"
 #define CONFIG_BOOTDELAY	3
+#define CONFIG_EXTRA_ENV_SETTINGS	"hwconfig=dsp:wake=yes"
+#define CONFIG_BOOTCOMMAND "nand read 0xC0000000 0x1000000 0x300000;bootm 0xC0000000"
 
 /*
  * U-Boot commands
@@ -226,6 +164,10 @@
 #define CONFIG_CMD_SAVES
 #define CONFIG_CMD_MEMORY
 
+#ifdef CONFIG_CMD_BDI
+#define CONFIG_CLOCKS
+#endif
+
 #ifndef CONFIG_DRIVER_TI_EMAC
 #undef CONFIG_CMD_NET
 #undef CONFIG_CMD_DHCP
@@ -233,7 +175,7 @@
 #undef CONFIG_CMD_PING
 #endif
 
-#ifdef CONFIG_USE_NAND
+#ifdef CONFIG_SYS_USE_NAND
 #undef CONFIG_CMD_FLASH
 #undef CONFIG_CMD_IMLS
 #define CONFIG_CMD_NAND
@@ -247,49 +189,10 @@
 #define CONFIG_CMD_UBIFS
 #endif
 
-#ifdef CONFIG_USE_SPIFLASH
-#undef CONFIG_CMD_IMLS
-#undef CONFIG_CMD_FLASH
-#define CONFIG_CMD_SPI
-#define CONFIG_CMD_SF
-#define CONFIG_CMD_SAVEENV
-#endif
-
-#if !defined(CONFIG_USE_NAND) && \
-	!defined(CONFIG_SYS_USE_NOR) && \
-	!defined(CONFIG_USE_SPIFLASH)
-#define CONFIG_ENV_IS_NOWHERE
-#define CONFIG_SYS_NO_FLASH
-#define CONFIG_ENV_SIZE		(16 << 10)
-#undef CONFIG_CMD_IMLS
-#undef CONFIG_CMD_ENV
-#endif
-
-/* SD/MMC */
-#undef CONFIG_MMC
-#undef CONFIG_GENERIC_MMC
-#undef CONFIG_DAVINCI_MMC
-
-#ifdef CONFIG_MMC
-#define CONFIG_DOS_PARTITION
-#define CONFIG_CMD_EXT2
-#define CONFIG_CMD_FAT
-#define CONFIG_CMD_MMC
-#undef CONFIG_ENV_IS_IN_MMC
-#endif
-
-#ifdef CONFIG_ENV_IS_IN_MMC
-#undef CONFIG_ENV_SIZE
-#undef CONFIG_ENV_OFFSET
-#define CONFIG_ENV_SIZE		(16 << 10)	/* 16 KiB */
-#define CONFIG_ENV_OFFSET	(51 << 9)	/* Sector 51 */
-#undef CONFIG_ENV_IS_IN_FLASH
-#undef CONFIG_ENV_IS_IN_NAND
-#undef CONFIG_ENV_IS_IN_SPI_FLASH
-#endif
 
 /* additions for new relocation code, must added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0xc0000000
+
 #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
 					GENERATED_GBL_DATA_SIZE)
 #endif /* __CONFIG_H */

@@ -179,9 +179,7 @@
 
 #define CONFIG_SYS_NAND_ECCSIZE	256
 #define CONFIG_SYS_NAND_ECCBYTES	3
-#define CONFIG_SYS_NAND_ECCSTEPS	(CONFIG_SYS_NAND_PAGE_SIZE / CONFIG_SYS_NAND_ECCSIZE)
 #define CONFIG_SYS_NAND_OOBSIZE	16
-#define CONFIG_SYS_NAND_ECCTOTAL	(CONFIG_SYS_NAND_ECCBYTES * CONFIG_SYS_NAND_ECCSTEPS)
 #define CONFIG_SYS_NAND_ECCPOS		{0, 1, 2, 3, 6, 7}
 
 #ifdef CONFIG_ENV_IS_IN_NAND
@@ -295,6 +293,7 @@
  */
 /* General PCI */
 #define CONFIG_PCI			/* include pci support	        */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #undef  CONFIG_PCI_PNP			/* do (not) pci plug-and-play   */
 #define CONFIG_PCI_SCAN_SHOW            /* show pci devices on startup  */
 #define CONFIG_SYS_PCI_TARGBASE        0x80000000 /* PCIaddr mapped to CONFIG_SYS_PCI_MEMBASE*/

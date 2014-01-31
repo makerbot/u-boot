@@ -40,6 +40,7 @@
 #define CONFIG_CPM2		1	/* Has a CPM2 */
 
 #define	CONFIG_SYS_TEXT_BASE	0xff000000
+#define	CONFIG_SYS_LDSCRIPT	"board/rsdproto/u-boot.lds"
 
 #define	CONFIG_MISC_INIT_F	1	/* Use misc_init_f()		*/
 
@@ -81,8 +82,8 @@
  * - Select bus for bd/buffers (see 28-13)
  * - Enable Full Duplex in FSMR
  */
-# define CONFIG_SYS_CMXFCR_MASK	(CMXFCR_FC2 | CMXFCR_RF2CS_MSK | CMXFCR_TF2CS_MSK)
-# define CONFIG_SYS_CMXFCR_VALUE	(CMXFCR_RF2CS_CLK13 | CMXFCR_TF2CS_CLK14)
+# define CONFIG_SYS_CMXFCR_MASK2	(CMXFCR_FC2 | CMXFCR_RF2CS_MSK | CMXFCR_TF2CS_MSK)
+# define CONFIG_SYS_CMXFCR_VALUE2	(CMXFCR_RF2CS_CLK13 | CMXFCR_TF2CS_CLK14)
 # define CONFIG_SYS_CPMFCR_RAMTYPE	(0)
 # define CONFIG_SYS_FCC_PSMR		(FCC_PSMR_FDE | FCC_PSMR_LPB)
 
@@ -159,9 +160,6 @@
 #define	CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address	*/
 
 #define	CONFIG_SYS_HZ			1000		/* decrementer freq: 1 ms ticks	*/
-
-						/* valid baudrates */
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
 /*
  * Low Level Configuration Settings

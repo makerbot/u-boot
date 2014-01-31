@@ -32,14 +32,19 @@
 #include <net.h>
 #include <malloc.h>
 #include <miiphy.h>
+#include <asm/io.h>
 #include <asm/errno.h>
 #include <asm/types.h>
+#include <asm/system.h>
 #include <asm/byteorder.h>
+#include <asm/arch/cpu.h>
 
 #if defined(CONFIG_KIRKWOOD)
 #include <asm/arch/kirkwood.h>
 #elif defined(CONFIG_ORION5X)
 #include <asm/arch/orion5x.h>
+#elif defined(CONFIG_DOVE)
+#include <asm/arch/dove.h>
 #endif
 
 #include "mvgbe.h"
@@ -49,6 +54,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define MV_PHY_ADR_REQUEST 0xee
 #define MVGBE_SMI_REG (((struct mvgbe_registers *)MVGBE0_BASE)->smi)
 
+#if defined(CONFIG_PHYLIB) || defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 /*
  * smi_reg_read - miiphy_read callback function.
  *
@@ -178,6 +184,26 @@ static int smi_reg_write(const char *devname, u8 phy_adr, u8 reg_ofs, u16 data)
 
 	return 0;
 }
+#endif
+
+#if defined(CONFIG_PHYLIB)
+int mvgbe_phy_read(struct mii_dev *bus, int phy_addr, int dev_addr,
+		   int reg_addr)
+{
+	u16 data;
+	int ret;
+	ret = smi_reg_read(bus->name, phy_addr, reg_addr, &data);
+	if (ret)
+		return ret;
+	return data;
+}
+
+int mvgbe_phy_write(struct mii_dev *bus, int phy_addr, int dev_addr,
+		    int reg_addr, u16 data)
+{
+	return smi_reg_write(bus->name, phy_addr, reg_addr, data);
+}
+#endif
 
 /* Stop and checks all queues */
 static void stop_queue(u32 * qreg)
@@ -462,8 +488,9 @@ static int mvgbe_init(struct eth_device *dev)
 	/* Enable port Rx. */
 	MVGBE_REG_WR(regs->rqc, (1 << RXUQ));
 
-#if (defined (CONFIG_MII) || defined (CONFIG_CMD_MII)) \
-	 && defined (CONFIG_SYS_FAULT_ECHO_LINK_DOWN)
+#if (defined(CONFIG_MII) || defined(CONFIG_CMD_MII)) && \
+	!defined(CONFIG_PHYLIB) && \
+	defined(CONFIG_SYS_FAULT_ECHO_LINK_DOWN)
 	/* Wait up to 5s for the link status */
 	for (i = 0; i < 5; i++) {
 		u16 phyadr;
@@ -520,14 +547,14 @@ static int mvgbe_write_hwaddr(struct eth_device *dev)
 	return 0;
 }
 
-static int mvgbe_send(struct eth_device *dev, void *dataptr,
-		      int datasize)
+static int mvgbe_send(struct eth_device *dev, void *dataptr, int datasize)
 {
 	struct mvgbe_device *dmvgbe = to_mvgbe(dev);
 	struct mvgbe_registers *regs = dmvgbe->regs;
 	struct mvgbe_txdesc *p_txdesc = dmvgbe->p_txdesc;
 	void *p = (void *)dataptr;
 	u32 cmd_sts;
+	u32 txuq0_reg_addr;
 
 	/* Copy buffer if it's misaligned */
 	if ((u32) dataptr & 0x07) {
@@ -549,7 +576,8 @@ static int mvgbe_send(struct eth_device *dev, void *dataptr,
 	p_txdesc->byte_cnt = datasize;
 
 	/* Set this tc desc as zeroth TXUQ */
-	MVGBE_REG_WR(regs->tcqdp[TXUQ], (u32) p_txdesc);
+	txuq0_reg_addr = (u32)&regs->tcqdp[TXUQ];
+	writel((u32) p_txdesc, txuq0_reg_addr);
 
 	/* ensure tx desc writes above are performed before we start Tx DMA */
 	isb();
@@ -580,6 +608,7 @@ static int mvgbe_recv(struct eth_device *dev)
 	struct mvgbe_rxdesc *p_rxdesc_curr = dmvgbe->p_rxdesc_curr;
 	u32 cmd_sts;
 	u32 timeout = 0;
+	u32 rxdesc_curr_addr;
 
 	/* wait untill rx packet available or timeout */
 	do {
@@ -634,18 +663,56 @@ static int mvgbe_recv(struct eth_device *dev)
 	p_rxdesc_curr->buf_size = PKTSIZE_ALIGN;
 	p_rxdesc_curr->byte_cnt = 0;
 
-	writel((unsigned)p_rxdesc_curr->nxtdesc_p,
-		(u32) &dmvgbe->p_rxdesc_curr);
+	rxdesc_curr_addr = (u32)&dmvgbe->p_rxdesc_curr;
+	writel((unsigned)p_rxdesc_curr->nxtdesc_p, rxdesc_curr_addr);
 
 	return 0;
 }
+
+#if defined(CONFIG_PHYLIB)
+int mvgbe_phylib_init(struct eth_device *dev, int phyid)
+{
+	struct mii_dev *bus;
+	struct phy_device *phydev;
+	int ret;
+
+	bus = mdio_alloc();
+	if (!bus) {
+		printf("mdio_alloc failed\n");
+		return -ENOMEM;
+	}
+	bus->read = mvgbe_phy_read;
+	bus->write = mvgbe_phy_write;
+	sprintf(bus->name, dev->name);
+
+	ret = mdio_register(bus);
+	if (ret) {
+		printf("mdio_register failed\n");
+		free(bus);
+		return -ENOMEM;
+	}
+
+	/* Set phy address of the port */
+	mvgbe_phy_write(bus, MV_PHY_ADR_REQUEST, 0, MV_PHY_ADR_REQUEST, phyid);
+
+	phydev = phy_connect(bus, phyid, dev, PHY_INTERFACE_MODE_RGMII);
+	if (!phydev) {
+		printf("phy_connect failed\n");
+		return -ENODEV;
+	}
+
+	phy_config(phydev);
+	phy_startup(phydev);
+
+	return 0;
+}
+#endif
 
 int mvgbe_initialize(bd_t *bis)
 {
 	struct mvgbe_device *dmvgbe;
 	struct eth_device *dev;
 	int devnum;
-	char *s;
 	u8 used_ports[MAX_MVGBE_DEVS] = CONFIG_MVGBE_PORTS;
 
 	for (devnum = 0; devnum < MAX_MVGBE_DEVS; devnum++) {
@@ -697,44 +764,22 @@ error1:
 
 		dev = &dmvgbe->dev;
 
-		/* must be less than NAMESIZE (16) */
+		/* must be less than sizeof(dev->name) */
 		sprintf(dev->name, "egiga%d", devnum);
 
-		/* Extract the MAC address from the environment */
 		switch (devnum) {
 		case 0:
 			dmvgbe->regs = (void *)MVGBE0_BASE;
-			s = "ethaddr";
 			break;
 #if defined(MVGBE1_BASE)
 		case 1:
 			dmvgbe->regs = (void *)MVGBE1_BASE;
-			s = "eth1addr";
 			break;
 #endif
 		default:	/* this should never happen */
 			printf("Err..(%s) Invalid device number %d\n",
 				__FUNCTION__, devnum);
 			return -1;
-		}
-
-		while (!eth_getenv_enetaddr(s, dev->enetaddr)) {
-			/* Generate Private MAC addr if not set */
-			dev->enetaddr[0] = 0x02;
-			dev->enetaddr[1] = 0x50;
-			dev->enetaddr[2] = 0x43;
-#if defined (CONFIG_SKIP_LOCAL_MAC_RANDOMIZATION)
-			/* Generate fixed lower MAC half using devnum */
-			dev->enetaddr[3] = 0;
-			dev->enetaddr[4] = 0;
-			dev->enetaddr[5] = devnum;
-#else
-			/* Generate random lower MAC half */
-			dev->enetaddr[3] = get_random_hex();
-			dev->enetaddr[4] = get_random_hex();
-			dev->enetaddr[5] = get_random_hex();
-#endif
-			eth_setenv_enetaddr(s, dev->enetaddr);
 		}
 
 		dev->init = (void *)mvgbe_init;
@@ -745,7 +790,9 @@ error1:
 
 		eth_register(dev);
 
-#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+#if defined(CONFIG_PHYLIB)
+		mvgbe_phylib_init(dev, PHY_BASE_ADR + devnum);
+#elif defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 		miiphy_register(dev->name, smi_reg_read, smi_reg_write);
 		/* Set phy address of the port */
 		miiphy_write(dev->name, MV_PHY_ADR_REQUEST,

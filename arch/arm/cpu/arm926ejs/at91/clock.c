@@ -12,8 +12,8 @@
  */
 
 #include <common.h>
+#include <asm/io.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/io.h>
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/clk.h>
 
@@ -23,47 +23,17 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-unsigned long get_cpu_clk_rate(void)
-{
-	return gd->cpu_clk_rate_hz;
-}
-
-unsigned long get_main_clk_rate(void)
-{
-	return gd->main_clk_rate_hz;
-}
-
-unsigned long get_mck_clk_rate(void)
-{
-	return gd->mck_rate_hz;
-}
-
-unsigned long get_plla_clk_rate(void)
-{
-	return gd->plla_rate_hz;
-}
-
-unsigned long get_pllb_clk_rate(void)
-{
-	return gd->pllb_rate_hz;
-}
-
-u32 get_pllb_init(void)
-{
-	return gd->at91_pllb_usb_init;
-}
-
 static unsigned long at91_css_to_rate(unsigned long css)
 {
 	switch (css) {
 	case AT91_PMC_MCKR_CSS_SLOW:
-		return AT91_SLOW_CLOCK;
+		return CONFIG_SYS_AT91_SLOW_CLOCK;
 	case AT91_PMC_MCKR_CSS_MAIN:
-		return gd->main_clk_rate_hz;
+		return gd->arch.main_clk_rate_hz;
 	case AT91_PMC_MCKR_CSS_PLLA:
-		return gd->plla_rate_hz;
+		return gd->arch.plla_rate_hz;
 	case AT91_PMC_MCKR_CSS_PLLB:
-		return gd->pllb_rate_hz;
+		return gd->arch.pllb_rate_hz;
 	}
 
 	return 0;
@@ -145,7 +115,7 @@ static u32 at91_pll_rate(u32 freq, u32 reg)
 int at91_clock_init(unsigned long main_clock)
 {
 	unsigned freq, mckr;
-	at91_pmc_t *pmc = (at91_pmc_t *) AT91_PMC_BASE;
+	at91_pmc_t *pmc = (at91_pmc_t *) ATMEL_BASE_PMC;
 #ifndef CONFIG_SYS_AT91_MAIN_CLOCK
 	unsigned tmp;
 	/*
@@ -159,13 +129,13 @@ int at91_clock_init(unsigned long main_clock)
 			tmp = readl(&pmc->mcfr);
 		} while (!(tmp & AT91_PMC_MCFR_MAINRDY));
 		tmp &= AT91_PMC_MCFR_MAINF_MASK;
-		main_clock = tmp * (AT91_SLOW_CLOCK / 16);
+		main_clock = tmp * (CONFIG_SYS_AT91_SLOW_CLOCK / 16);
 	}
 #endif
-	gd->main_clk_rate_hz = main_clock;
+	gd->arch.main_clk_rate_hz = main_clock;
 
 	/* report if PLLA is more than mildly overclocked */
-	gd->plla_rate_hz = at91_pll_rate(main_clock, readl(&pmc->pllar));
+	gd->arch.plla_rate_hz = at91_pll_rate(main_clock, readl(&pmc->pllar));
 
 #ifdef CONFIG_USB_ATMEL
 	/*
@@ -174,9 +144,10 @@ int at91_clock_init(unsigned long main_clock)
 	 *
 	 * REVISIT:  assumes MCK doesn't derive from PLLB!
 	 */
-	gd->at91_pllb_usb_init = at91_pll_calc(main_clock, 48000000 * 2) |
+	gd->arch.at91_pllb_usb_init = at91_pll_calc(main_clock, 48000000 * 2) |
 			     AT91_PMC_PLLBR_USBDIV_2;
-	gd->pllb_rate_hz = at91_pll_rate(main_clock, gd->at91_pllb_usb_init);
+	gd->arch.pllb_rate_hz = at91_pll_rate(main_clock,
+					      gd->arch.at91_pllb_usb_init);
 #endif
 
 	/*
@@ -184,32 +155,38 @@ int at91_clock_init(unsigned long main_clock)
 	 * For now, assume this parentage won't change.
 	 */
 	mckr = readl(&pmc->mckr);
-#if defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45)
+#if defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45) \
+		|| defined(CONFIG_AT91SAM9N12) || defined(CONFIG_AT91SAM9X5)
 	/* plla divisor by 2 */
-	gd->plla_rate_hz /= (1 << ((mckr & 1 << 12) >> 12));
+	gd->arch.plla_rate_hz /= (1 << ((mckr & 1 << 12) >> 12));
 #endif
-	gd->mck_rate_hz = at91_css_to_rate(mckr & AT91_PMC_MCKR_CSS_MASK);
-	freq = gd->mck_rate_hz;
+	gd->arch.mck_rate_hz = at91_css_to_rate(mckr & AT91_PMC_MCKR_CSS_MASK);
+	freq = gd->arch.mck_rate_hz;
 
 	freq /= (1 << ((mckr & AT91_PMC_MCKR_PRES_MASK) >> 2));	/* prescale */
-#if defined(CONFIG_AT91RM9200)
-	/* mdiv */
-	gd->mck_rate_hz = freq / (1 + ((mckr & AT91_PMC_MCKR_MDIV_MASK) >> 8));
-#elif defined(CONFIG_AT91SAM9G20)
+#if defined(CONFIG_AT91SAM9G20)
 	/* mdiv ; (x >> 7) = ((x >> 8) * 2) */
-	gd->mck_rate_hz = (mckr & AT91_PMC_MCKR_MDIV_MASK) ?
+	gd->arch.mck_rate_hz = (mckr & AT91_PMC_MCKR_MDIV_MASK) ?
 		freq / ((mckr & AT91_PMC_MCKR_MDIV_MASK) >> 7) : freq;
 	if (mckr & AT91_PMC_MCKR_MDIV_MASK)
 		freq /= 2;			/* processor clock division */
-#elif defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45)
-	gd->mck_rate_hz = (mckr & AT91_PMC_MCKR_MDIV_MASK) ==
+#elif defined(CONFIG_AT91SAM9G45) || defined(CONFIG_AT91SAM9M10G45) \
+		|| defined(CONFIG_AT91SAM9N12) || defined(CONFIG_AT91SAM9X5)
+	/* mdiv <==> divisor
+	 *  0   <==>   1
+	 *  1   <==>   2
+	 *  2   <==>   4
+	 *  3   <==>   3
+	 */
+	gd->arch.mck_rate_hz = (mckr & AT91_PMC_MCKR_MDIV_MASK) ==
 		(AT91_PMC_MCKR_MDIV_2 | AT91_PMC_MCKR_MDIV_4)
 		? freq / 3
 		: freq / (1 << ((mckr & AT91_PMC_MCKR_MDIV_MASK) >> 8));
 #else
-	gd->mck_rate_hz = freq / (1 << ((mckr & AT91_PMC_MCKR_MDIV_MASK) >> 8));
+	gd->arch.mck_rate_hz = freq /
+			(1 << ((mckr & AT91_PMC_MCKR_MDIV_MASK) >> 8));
 #endif
-	gd->cpu_clk_rate_hz = freq;
+	gd->arch.cpu_clk_rate_hz = freq;
 
 	return 0;
 }

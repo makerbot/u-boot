@@ -36,7 +36,7 @@ extern void srmmu_init_cpu(unsigned int entry);
 extern void prepare_bootargs(char *bootargs);
 
 #ifdef CONFIG_USB_UHCI
-extern int usb_lowlevel_stop(void);
+extern int usb_lowlevel_stop(int index);
 #endif
 
 /* sparc kernel argument (the ROM vector) */
@@ -95,13 +95,15 @@ void arch_lmb_reserve(struct lmb *lmb)
 int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t * images)
 {
 	char *bootargs;
-	ulong initrd_start, initrd_end;
 	ulong rd_len;
-	unsigned int data, len, checksum;
-	unsigned int initrd_addr, kernend;
 	void (*kernel) (struct linux_romvec *, void *);
-	struct lmb *lmb = &images->lmb;
 	int ret;
+
+	/*
+	 * allow the PREP bootm subcommand, it is required for bootm to work
+	 */
+	if (flag & BOOTM_STATE_OS_PREP)
+		return 0;
 
 	if ((flag != 0) && (flag != BOOTM_STATE_OS_GO))
 		return 1;
@@ -133,24 +135,23 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t * im
 	 * extracted and is writeable.
 	 */
 
+	ret = image_setup_linux(images);
+	if (ret) {
+		puts("### Failed to relocate RAM disk\n");
+		goto error;
+	}
+
 	/* Calc length of RAM disk, if zero no ramdisk available */
 	rd_len = images->rd_end - images->rd_start;
 
 	if (rd_len) {
-		ret = boot_ramdisk_high(lmb, images->rd_start, rd_len,
-					&initrd_start, &initrd_end);
-		if (ret) {
-			puts("### Failed to relocate RAM disk\n");
-			goto error;
-		}
-
 		/* Update SPARC kernel header so that Linux knows
 		 * what is going on and where to find RAM disk.
 		 *
 		 * Set INITRD Image address relative to RAM Start
 		 */
 		linux_hdr->hdr_input.ver_0203.sparc_ramdisk_image =
-		    initrd_start - CONFIG_SYS_RAM_BASE;
+			images->initrd_start - CONFIG_SYS_RAM_BASE;
 		linux_hdr->hdr_input.ver_0203.sparc_ramdisk_size = rd_len;
 		/* Clear READ ONLY flag if set to non-zero */
 		linux_hdr->hdr_input.ver_0203.root_flags = 1;

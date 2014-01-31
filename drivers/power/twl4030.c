@@ -45,14 +45,14 @@
 void twl4030_power_reset_init(void)
 {
 	u8 val = 0;
-	if (twl4030_i2c_read_u8(TWL4030_CHIP_PM_MASTER, &val,
-				TWL4030_PM_MASTER_P1_SW_EVENTS)) {
+	if (twl4030_i2c_read_u8(TWL4030_CHIP_PM_MASTER,
+				TWL4030_PM_MASTER_P1_SW_EVENTS, &val)) {
 		printf("Error:TWL4030: failed to read the power register\n");
 		printf("Could not initialize hardware reset\n");
 	} else {
 		val |= TWL4030_PM_MASTER_SW_EVENTS_STOPON_PWRON;
-		if (twl4030_i2c_write_u8(TWL4030_CHIP_PM_MASTER, val,
-					 TWL4030_PM_MASTER_P1_SW_EVENTS)) {
+		if (twl4030_i2c_write_u8(TWL4030_CHIP_PM_MASTER,
+					 TWL4030_PM_MASTER_P1_SW_EVENTS, val)) {
 			printf("Error:TWL4030: failed to write the power register\n");
 			printf("Could not initialize hardware reset\n");
 		}
@@ -65,13 +65,23 @@ void twl4030_power_reset_init(void)
 void twl4030_pmrecv_vsel_cfg(u8 vsel_reg, u8 vsel_val,
 				u8 dev_grp, u8 dev_grp_sel)
 {
-	/* Select the Device Group */
-	twl4030_i2c_write_u8(TWL4030_CHIP_PM_RECEIVER, dev_grp_sel,
-				dev_grp);
+	int ret;
 
 	/* Select the Voltage */
-	twl4030_i2c_write_u8(TWL4030_CHIP_PM_RECEIVER, vsel_val,
-				vsel_reg);
+	ret = twl4030_i2c_write_u8(TWL4030_CHIP_PM_RECEIVER, vsel_reg,
+				   vsel_val);
+	if (ret != 0) {
+		printf("Could not write vsel to reg %02x (%d)\n",
+			vsel_reg, ret);
+		return;
+	}
+
+	/* Select the Device Group (enable the supply if dev_grp_sel != 0) */
+	ret = twl4030_i2c_write_u8(TWL4030_CHIP_PM_RECEIVER, dev_grp,
+				   dev_grp_sel);
+	if (ret != 0)
+		printf("Could not write grp_sel to reg %02x (%d)\n",
+			dev_grp, ret);
 }
 
 void twl4030_power_init(void)
@@ -97,9 +107,9 @@ void twl4030_power_init(void)
 
 void twl4030_power_mmc_init(void)
 {
-	/* Set VMMC1 to 3 Volts */
+	/* Set VMMC1 to 3.15 Volts */
 	twl4030_pmrecv_vsel_cfg(TWL4030_PM_RECEIVER_VMMC1_DEDICATED,
-				TWL4030_PM_RECEIVER_VMMC1_VSEL_30,
+				TWL4030_PM_RECEIVER_VMMC1_VSEL_32,
 				TWL4030_PM_RECEIVER_VMMC1_DEV_GRP,
 				TWL4030_PM_RECEIVER_DEV_GRP_P1);
 }

@@ -42,10 +42,6 @@
 /* the OMAP5912 OSK has 12MHz input clock */
 #define CONFIG_SYS_CLK_FREQ	12000000
 
-#undef CONFIG_USE_IRQ	/* we don't need IRQ/FIQ stuff */
-
-#define CONFIG_MISC_INIT_R
-
 #define CONFIG_CMDLINE_TAG	1	/* enable passing of ATAGs  */
 #define CONFIG_SETUP_MEMORY_TAGS	1
 #define CONFIG_INITRD_TAG      1       /* Required for ramdisk support */
@@ -60,7 +56,6 @@
  */
 /*
 */
-#define CONFIG_NET_MULTI
 #define CONFIG_LAN91C96
 #define CONFIG_LAN91C96_BASE 0x04800300
 #define CONFIG_LAN91C96_EXT_PHY
@@ -84,8 +79,6 @@
 #define CONFIG_ENV_OVERWRITE
 #define CONFIG_CONS_INDEX	1
 #define CONFIG_BAUDRATE	115200
-#define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
-
 
 /*
  * Command line configuration.
@@ -141,18 +134,7 @@
  */
 #define CONFIG_SYS_TIMERBASE	0xFFFEC500	/* use timer 1 */
 #define CONFIG_SYS_PTV		7	/* 2^(PTV+1), divide by 256 */
-#define CONFIG_SYS_HZ		((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PTV))
-
-/*-----------------------------------------------------------------------
- * Stack sizes
- *
- * The stack sizes are set up in start.S using the settings below
- */
-#define CONFIG_STACKSIZE	(128*1024)	/* regular stack */
-#ifdef CONFIG_USE_IRQ
-#define CONFIG_STACKSIZE_IRQ	(4*1024)	/* IRQ stack */
-#define CONFIG_STACKSIZE_FIQ	(4*1024)	/* FIQ stack */
-#endif
+#define CONFIG_SYS_HZ		1000
 
 /*-----------------------------------------------------------------------
  * Physical Memory Map
@@ -167,6 +149,8 @@
 #define CONFIG_SYS_FLASH_BASE		PHYS_FLASH_1
 
 #define CONFIG_SYS_MONITOR_BASE       CONFIG_SYS_FLASH_BASE  /* Monitor at beginning of flash */
+
+#define PHYS_SRAM		0x20000000
 
 /*-----------------------------------------------------------------------
  * FLASH driver setup
@@ -194,9 +178,15 @@
  */
 #define CONFIG_ENV_IS_IN_FLASH	1
 /* addr of environment */
-#define CONFIG_ENV_ADDR	(CONFIG_SYS_FLASH_BASE + 0x020000)
+#define CONFIG_ENV_ADDR	(CONFIG_SYS_FLASH_BASE + CONFIG_ENV_OFFSET)
 
-#define CONFIG_ENV_SIZE	0x20000	/* Total Size of Environment Sector */
-#define CONFIG_ENV_OFFSET	0x20000	/* environment starts here  */
+#define CONFIG_ENV_SIZE		0x20000	/* Total Size of Environment Sector */
+#define CONFIG_ENV_OFFSET	0x40000	/* environment starts here  */
+
+#define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
+#define CONFIG_SYS_INIT_RAM_ADDR        PHYS_SRAM
+#define CONFIG_SYS_INIT_RAM_SIZE        (250 * 1024)
+#define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SYS_INIT_RAM_ADDR + \
+					 CONFIG_SYS_INIT_RAM_SIZE)
 
 #endif							/* __CONFIG_H */

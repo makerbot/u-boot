@@ -34,6 +34,10 @@
 #define __IMAGE_H__
 
 #include "compiler.h"
+#include <asm/byteorder.h>
+
+/* Define this to avoid #ifdefs later on */
+struct lmb;
 
 #ifdef USE_HOSTCC
 
@@ -42,20 +46,79 @@
 #define CONFIG_OF_LIBFDT	1
 #define CONFIG_FIT_VERBOSE	1 /* enable fit_format_{error,warning}() */
 
+#define IMAGE_ENABLE_IGNORE	0
+#define IMAGE_INDENT_STRING	""
+
 #else
 
 #include <lmb.h>
 #include <asm/u-boot.h>
 #include <command.h>
 
+/* Take notice of the 'ignore' property for hashes */
+#define IMAGE_ENABLE_IGNORE	1
+#define IMAGE_INDENT_STRING	"   "
+
 #endif /* USE_HOSTCC */
 
 #if defined(CONFIG_FIT)
-#include <fdt.h>
 #include <libfdt.h>
 #include <fdt_support.h>
-#define CONFIG_MD5		/* FIT images need MD5 support */
-#define CONFIG_SHA1		/* and SHA1 */
+# ifdef CONFIG_SPL_BUILD
+#  ifdef CONFIG_SPL_CRC32_SUPPORT
+#   define IMAGE_ENABLE_CRC32	1
+#  endif
+#  ifdef CONFIG_SPL_MD5_SUPPORT
+#   define IMAGE_ENABLE_MD5	1
+#  endif
+#  ifdef CONFIG_SPL_SHA1_SUPPORT
+#   define IMAGE_ENABLE_SHA1	1
+#  endif
+# else
+#  define CONFIG_CRC32		/* FIT images need CRC32 support */
+#  define CONFIG_MD5		/* and MD5 */
+#  define CONFIG_SHA1		/* and SHA1 */
+#  define IMAGE_ENABLE_CRC32	1
+#  define IMAGE_ENABLE_MD5	1
+#  define IMAGE_ENABLE_SHA1	1
+# endif
+
+#ifndef IMAGE_ENABLE_CRC32
+#define IMAGE_ENABLE_CRC32	0
+#endif
+
+#ifndef IMAGE_ENABLE_MD5
+#define IMAGE_ENABLE_MD5	0
+#endif
+
+#ifndef IMAGE_ENABLE_SHA1
+#define IMAGE_ENABLE_SHA1	0
+#endif
+
+#endif /* CONFIG_FIT */
+
+#ifdef CONFIG_SYS_BOOT_RAMDISK_HIGH
+# define IMAGE_ENABLE_RAMDISK_HIGH	1
+#else
+# define IMAGE_ENABLE_RAMDISK_HIGH	0
+#endif
+
+#ifdef CONFIG_OF_LIBFDT
+# define IMAGE_ENABLE_OF_LIBFDT	1
+#else
+# define IMAGE_ENABLE_OF_LIBFDT	0
+#endif
+
+#ifdef CONFIG_SYS_BOOT_GET_CMDLINE
+# define IMAGE_BOOT_GET_CMDLINE		1
+#else
+# define IMAGE_BOOT_GET_CMDLINE		0
+#endif
+
+#ifdef CONFIG_OF_BOARD_SETUP
+# define IMAAGE_OF_BOARD_SETUP		1
+#else
+# define IMAAGE_OF_BOARD_SETUP		0
 #endif
 
 /*
@@ -84,6 +147,7 @@
 #define IH_OS_UNITY		20	/* Unity OS	*/
 #define IH_OS_INTEGRITY		21	/* INTEGRITY	*/
 #define IH_OS_OSE		22	/* OSE		*/
+#define IH_OS_PLAN9		23	/* Plan 9	*/
 
 /*
  * CPU Architecture Codes (supported by Linux)
@@ -106,6 +170,9 @@
 #define IH_ARCH_BLACKFIN	16	/* Blackfin	*/
 #define IH_ARCH_AVR32		17	/* AVR32	*/
 #define IH_ARCH_ST200	        18	/* STMicroelectronics ST200  */
+#define IH_ARCH_SANDBOX		19	/* Sandbox architecture (test only) */
+#define IH_ARCH_NDS32	        20	/* ANDES Technology - NDS32  */
+#define IH_ARCH_OPENRISC        21	/* OpenRISC 1000  */
 
 /*
  * Image Types
@@ -157,6 +224,11 @@
 #define IH_TYPE_FLATDT		8	/* Binary Flat Device Tree Blob	*/
 #define IH_TYPE_KWBIMAGE	9	/* Kirkwood Boot Image		*/
 #define IH_TYPE_IMXIMAGE	10	/* Freescale IMXBoot Image	*/
+#define IH_TYPE_UBLIMAGE	11	/* Davinci UBL Image		*/
+#define IH_TYPE_OMAPIMAGE	12	/* TI OMAP Config Header Image	*/
+#define IH_TYPE_AISIMAGE	13	/* TI Davinci AIS Image		*/
+#define IH_TYPE_KERNEL_NOLOAD	14	/* OS Kernel Image, can run from any load address */
+#define IH_TYPE_PBLIMAGE	15	/* Freescale PBL Boot Image	*/
 
 /*
  * Compression Types
@@ -170,18 +242,21 @@
 #define IH_MAGIC	0x27051956	/* Image Magic Number		*/
 #define IH_NMLEN		32	/* Image Name Length		*/
 
+/* Reused from common.h */
+#define ROUND(a, b)		(((a) + (b) - 1) & ~((b) - 1))
+
 /*
  * Legacy format image header,
  * all data in network byte order (aka natural aka bigendian).
  */
 typedef struct image_header {
-	uint32_t	ih_magic;	/* Image Header Magic Number	*/
-	uint32_t	ih_hcrc;	/* Image Header CRC Checksum	*/
-	uint32_t	ih_time;	/* Image Creation Timestamp	*/
-	uint32_t	ih_size;	/* Image Data Size		*/
-	uint32_t	ih_load;	/* Data	 Load  Address		*/
-	uint32_t	ih_ep;		/* Entry Point Address		*/
-	uint32_t	ih_dcrc;	/* Image Data CRC Checksum	*/
+	__be32		ih_magic;	/* Image Header Magic Number	*/
+	__be32		ih_hcrc;	/* Image Header CRC Checksum	*/
+	__be32		ih_time;	/* Image Creation Timestamp	*/
+	__be32		ih_size;	/* Image Data Size		*/
+	__be32		ih_load;	/* Data	 Load  Address		*/
+	__be32		ih_ep;		/* Entry Point Address		*/
+	__be32		ih_dcrc;	/* Image Data CRC Checksum	*/
 	uint8_t		ih_os;		/* Operating System		*/
 	uint8_t		ih_arch;	/* CPU architecture		*/
 	uint8_t		ih_type;	/* Image Type			*/
@@ -232,9 +307,7 @@ typedef struct bootm_headers {
 
 	ulong		rd_start, rd_end;/* ramdisk start/end */
 
-#ifdef CONFIG_OF_LIBFDT
 	char		*ft_addr;	/* flat dev tree address */
-#endif
 	ulong		ft_len;		/* length of flat device tree */
 
 	ulong		initrd_start;
@@ -247,19 +320,24 @@ typedef struct bootm_headers {
 	int		verify;		/* getenv("verify")[0] != 'n' */
 
 #define	BOOTM_STATE_START	(0x00000001)
-#define	BOOTM_STATE_LOADOS	(0x00000002)
-#define	BOOTM_STATE_RAMDISK	(0x00000004)
-#define	BOOTM_STATE_FDT		(0x00000008)
-#define	BOOTM_STATE_OS_CMDLINE	(0x00000010)
-#define	BOOTM_STATE_OS_BD_T	(0x00000020)
-#define	BOOTM_STATE_OS_PREP	(0x00000040)
-#define	BOOTM_STATE_OS_GO	(0x00000080)
+#define	BOOTM_STATE_FINDOS	(0x00000002)
+#define	BOOTM_STATE_FINDOTHER	(0x00000004)
+#define	BOOTM_STATE_LOADOS	(0x00000008)
+#define	BOOTM_STATE_RAMDISK	(0x00000010)
+#define	BOOTM_STATE_FDT		(0x00000020)
+#define	BOOTM_STATE_OS_CMDLINE	(0x00000040)
+#define	BOOTM_STATE_OS_BD_T	(0x00000080)
+#define	BOOTM_STATE_OS_PREP	(0x00000100)
+#define	BOOTM_STATE_OS_FAKE_GO	(0x00000200)	/* 'Almost' run the OS */
+#define	BOOTM_STATE_OS_GO	(0x00000400)
 	int		state;
 
 #ifdef CONFIG_LMB
 	struct lmb	lmb;		/* for memory mgmt */
 #endif
 } bootm_headers_t;
+
+extern bootm_headers_t images;
 
 /*
  * Some systems (for example LWMON) have very short watchdog periods;
@@ -300,24 +378,39 @@ typedef struct table_entry {
  * entry that matches the given short name. If a matching entry is
  * found, it's id is returned to the caller.
  */
-int get_table_entry_id (table_entry_t *table,
+int get_table_entry_id(const table_entry_t *table,
 		const char *table_name, const char *name);
 /*
  * get_table_entry_name() scans the translation table trying to find
  * an entry that matches the given id. If a matching entry is found,
  * its long name is returned to the caller.
  */
-char *get_table_entry_name (table_entry_t *table, char *msg, int id);
+char *get_table_entry_name(const table_entry_t *table, char *msg, int id);
 
-const char *genimg_get_os_name (uint8_t os);
-const char *genimg_get_arch_name (uint8_t arch);
-const char *genimg_get_type_name (uint8_t type);
-const char *genimg_get_comp_name (uint8_t comp);
-int genimg_get_os_id (const char *name);
-int genimg_get_arch_id (const char *name);
-int genimg_get_type_id (const char *name);
-int genimg_get_comp_id (const char *name);
-void genimg_print_size (uint32_t size);
+const char *genimg_get_os_name(uint8_t os);
+const char *genimg_get_arch_name(uint8_t arch);
+const char *genimg_get_type_name(uint8_t type);
+const char *genimg_get_comp_name(uint8_t comp);
+int genimg_get_os_id(const char *name);
+int genimg_get_arch_id(const char *name);
+int genimg_get_type_id(const char *name);
+int genimg_get_comp_id(const char *name);
+void genimg_print_size(uint32_t size);
+
+#if defined(CONFIG_TIMESTAMP) || defined(CONFIG_CMD_DATE) || \
+	defined(USE_HOSTCC)
+#define IMAGE_ENABLE_TIMESTAMP 1
+#else
+#define IMAGE_ENABLE_TIMESTAMP 0
+#endif
+void genimg_print_time(time_t timestamp);
+
+/* What to do with a image load address ('load = <> 'in the FIT) */
+enum fit_load_op {
+	FIT_LOAD_IGNORED,	/* Ignore load address */
+	FIT_LOAD_OPTIONAL,	/* Can be provided, but optional */
+	FIT_LOAD_REQUIRED,	/* Must be provided */
+};
 
 #ifndef USE_HOSTCC
 /* Image format types, returned by _get_format() routine */
@@ -325,73 +418,129 @@ void genimg_print_size (uint32_t size);
 #define IMAGE_FORMAT_LEGACY	0x01	/* legacy image_header based format */
 #define IMAGE_FORMAT_FIT	0x02	/* new, libfdt based format */
 
-int genimg_get_format (void *img_addr);
-int genimg_has_config (bootm_headers_t *images);
-ulong genimg_get_image (ulong img_addr);
+int genimg_get_format(const void *img_addr);
+int genimg_has_config(bootm_headers_t *images);
+ulong genimg_get_image(ulong img_addr);
 
-int boot_get_ramdisk (int argc, char * const argv[], bootm_headers_t *images,
+int boot_get_ramdisk(int argc, char * const argv[], bootm_headers_t *images,
 		uint8_t arch, ulong *rd_start, ulong *rd_end);
 
+/**
+ * fit_image_load() - load an image from a FIT
+ *
+ * This deals with all aspects of loading an image from a FIT, including
+ * selecting the right image based on configuration, verifying it, printing
+ * out progress messages, checking the type/arch/os and optionally copying it
+ * to the right load address.
+ *
+ * @param images	Boot images structure
+ * @param prop_name	Property name to look up (FIT_..._PROP)
+ * @param addr		Address of FIT in memory
+ * @param fit_unamep	On entry this is the requested image name
+ *			(e.g. "kernel@1") or NULL to use the default. On exit
+ *			points to the selected image name
+ * @param fit_uname_configp	On entry this is the requested configuration
+ *			name (e.g. "conf@1") or NULL to use the default. On
+ *			exit points to the selected configuration name.
+ * @param arch		Expected architecture (IH_ARCH_...)
+ * @param image_type	Required image type (IH_TYPE_...). If this is
+ *			IH_TYPE_KERNEL then we allow IH_TYPE_KERNEL_NOLOAD
+ *			also.
+ * @param bootstage_id	ID of starting bootstage to use for progress updates.
+ *			This will be added to the BOOTSTAGE_SUB values when
+ *			calling bootstage_mark()
+ * @param load_op	Decribes what to do with the load address
+ * @param datap		Returns address of loaded image
+ * @param lenp		Returns length of loaded image
+ */
+int fit_image_load(bootm_headers_t *images, const char *prop_name, ulong addr,
+		   const char **fit_unamep, const char **fit_uname_configp,
+		   int arch, int image_type, int bootstage_id,
+		   enum fit_load_op load_op, ulong *datap, ulong *lenp);
 
-#ifdef CONFIG_OF_LIBFDT
-int boot_get_fdt (int flag, int argc, char * const argv[], bootm_headers_t *images,
-		char **of_flat_tree, ulong *of_size);
-int boot_relocate_fdt (struct lmb *lmb, ulong bootmap_base,
-		char **of_flat_tree, ulong *of_size);
-#endif
+/**
+ * fit_get_node_from_config() - Look up an image a FIT by type
+ *
+ * This looks in the selected conf@ node (images->fit_uname_cfg) for a
+ * particular image type (e.g. "kernel") and then finds the image that is
+ * referred to.
+ *
+ * For example, for something like:
+ *
+ * images {
+ *	kernel@1 {
+ *		...
+ *	};
+ * };
+ * configurations {
+ *	conf@1 {
+ *		kernel = "kernel@1";
+ *	};
+ * };
+ *
+ * the function will return the node offset of the kernel@1 node, assuming
+ * that conf@1 is the chosen configuration.
+ *
+ * @param images	Boot images structure
+ * @param prop_name	Property name to look up (FIT_..._PROP)
+ * @param addr		Address of FIT in memory
+ */
+int fit_get_node_from_config(bootm_headers_t *images, const char *prop_name,
+			ulong addr);
 
-#ifdef CONFIG_SYS_BOOT_RAMDISK_HIGH
-int boot_ramdisk_high (struct lmb *lmb, ulong rd_data, ulong rd_len,
+int boot_get_fdt(int flag, int argc, char * const argv[], uint8_t arch,
+		 bootm_headers_t *images,
+		 char **of_flat_tree, ulong *of_size);
+void boot_fdt_add_mem_rsv_regions(struct lmb *lmb, void *fdt_blob);
+int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size);
+
+int boot_ramdisk_high(struct lmb *lmb, ulong rd_data, ulong rd_len,
 		  ulong *initrd_start, ulong *initrd_end);
-#endif /* CONFIG_SYS_BOOT_RAMDISK_HIGH */
-#ifdef CONFIG_SYS_BOOT_GET_CMDLINE
-int boot_get_cmdline (struct lmb *lmb, ulong *cmd_start, ulong *cmd_end,
-			ulong bootmap_base);
-#endif /* CONFIG_SYS_BOOT_GET_CMDLINE */
+int boot_get_cmdline(struct lmb *lmb, ulong *cmd_start, ulong *cmd_end);
 #ifdef CONFIG_SYS_BOOT_GET_KBD
-int boot_get_kbd (struct lmb *lmb, bd_t **kbd, ulong bootmap_base);
+int boot_get_kbd(struct lmb *lmb, bd_t **kbd);
 #endif /* CONFIG_SYS_BOOT_GET_KBD */
 #endif /* !USE_HOSTCC */
 
 /*******************************************************************/
 /* Legacy format specific code (prefixed with image_) */
 /*******************************************************************/
-static inline uint32_t image_get_header_size (void)
+static inline uint32_t image_get_header_size(void)
 {
-	return (sizeof (image_header_t));
+	return (sizeof(image_header_t));
 }
 
 #define image_get_hdr_l(f) \
 	static inline uint32_t image_get_##f(const image_header_t *hdr) \
 	{ \
-		return uimage_to_cpu (hdr->ih_##f); \
+		return uimage_to_cpu(hdr->ih_##f); \
 	}
-image_get_hdr_l (magic)		/* image_get_magic */
-image_get_hdr_l (hcrc)		/* image_get_hcrc */
-image_get_hdr_l (time)		/* image_get_time */
-image_get_hdr_l (size)		/* image_get_size */
-image_get_hdr_l (load)		/* image_get_load */
-image_get_hdr_l (ep)		/* image_get_ep */
-image_get_hdr_l (dcrc)		/* image_get_dcrc */
+image_get_hdr_l(magic)		/* image_get_magic */
+image_get_hdr_l(hcrc)		/* image_get_hcrc */
+image_get_hdr_l(time)		/* image_get_time */
+image_get_hdr_l(size)		/* image_get_size */
+image_get_hdr_l(load)		/* image_get_load */
+image_get_hdr_l(ep)		/* image_get_ep */
+image_get_hdr_l(dcrc)		/* image_get_dcrc */
 
 #define image_get_hdr_b(f) \
 	static inline uint8_t image_get_##f(const image_header_t *hdr) \
 	{ \
 		return hdr->ih_##f; \
 	}
-image_get_hdr_b (os)		/* image_get_os */
-image_get_hdr_b (arch)		/* image_get_arch */
-image_get_hdr_b (type)		/* image_get_type */
-image_get_hdr_b (comp)		/* image_get_comp */
+image_get_hdr_b(os)		/* image_get_os */
+image_get_hdr_b(arch)		/* image_get_arch */
+image_get_hdr_b(type)		/* image_get_type */
+image_get_hdr_b(comp)		/* image_get_comp */
 
-static inline char *image_get_name (const image_header_t *hdr)
+static inline char *image_get_name(const image_header_t *hdr)
 {
 	return (char *)hdr->ih_name;
 }
 
-static inline uint32_t image_get_data_size (const image_header_t *hdr)
+static inline uint32_t image_get_data_size(const image_header_t *hdr)
 {
-	return image_get_size (hdr);
+	return image_get_size(hdr);
 }
 
 /**
@@ -405,113 +554,125 @@ static inline uint32_t image_get_data_size (const image_header_t *hdr)
  * returns:
  *     image payload data start address
  */
-static inline ulong image_get_data (const image_header_t *hdr)
+static inline ulong image_get_data(const image_header_t *hdr)
 {
-	return ((ulong)hdr + image_get_header_size ());
+	return ((ulong)hdr + image_get_header_size());
 }
 
-static inline uint32_t image_get_image_size (const image_header_t *hdr)
+static inline uint32_t image_get_image_size(const image_header_t *hdr)
 {
-	return (image_get_size (hdr) + image_get_header_size ());
+	return (image_get_size(hdr) + image_get_header_size());
 }
-static inline ulong image_get_image_end (const image_header_t *hdr)
+static inline ulong image_get_image_end(const image_header_t *hdr)
 {
-	return ((ulong)hdr + image_get_image_size (hdr));
+	return ((ulong)hdr + image_get_image_size(hdr));
 }
 
 #define image_set_hdr_l(f) \
 	static inline void image_set_##f(image_header_t *hdr, uint32_t val) \
 	{ \
-		hdr->ih_##f = cpu_to_uimage (val); \
+		hdr->ih_##f = cpu_to_uimage(val); \
 	}
-image_set_hdr_l (magic)		/* image_set_magic */
-image_set_hdr_l (hcrc)		/* image_set_hcrc */
-image_set_hdr_l (time)		/* image_set_time */
-image_set_hdr_l (size)		/* image_set_size */
-image_set_hdr_l (load)		/* image_set_load */
-image_set_hdr_l (ep)		/* image_set_ep */
-image_set_hdr_l (dcrc)		/* image_set_dcrc */
+image_set_hdr_l(magic)		/* image_set_magic */
+image_set_hdr_l(hcrc)		/* image_set_hcrc */
+image_set_hdr_l(time)		/* image_set_time */
+image_set_hdr_l(size)		/* image_set_size */
+image_set_hdr_l(load)		/* image_set_load */
+image_set_hdr_l(ep)		/* image_set_ep */
+image_set_hdr_l(dcrc)		/* image_set_dcrc */
 
 #define image_set_hdr_b(f) \
 	static inline void image_set_##f(image_header_t *hdr, uint8_t val) \
 	{ \
 		hdr->ih_##f = val; \
 	}
-image_set_hdr_b (os)		/* image_set_os */
-image_set_hdr_b (arch)		/* image_set_arch */
-image_set_hdr_b (type)		/* image_set_type */
-image_set_hdr_b (comp)		/* image_set_comp */
+image_set_hdr_b(os)		/* image_set_os */
+image_set_hdr_b(arch)		/* image_set_arch */
+image_set_hdr_b(type)		/* image_set_type */
+image_set_hdr_b(comp)		/* image_set_comp */
 
-static inline void image_set_name (image_header_t *hdr, const char *name)
+static inline void image_set_name(image_header_t *hdr, const char *name)
 {
-	strncpy (image_get_name (hdr), name, IH_NMLEN);
+	strncpy(image_get_name(hdr), name, IH_NMLEN);
 }
 
-int image_check_hcrc (const image_header_t *hdr);
-int image_check_dcrc (const image_header_t *hdr);
+int image_check_hcrc(const image_header_t *hdr);
+int image_check_dcrc(const image_header_t *hdr);
 #ifndef USE_HOSTCC
-int getenv_yesno (char *var);
 ulong getenv_bootm_low(void);
 phys_size_t getenv_bootm_size(void);
-void memmove_wd (void *to, void *from, size_t len, ulong chunksz);
+phys_size_t getenv_bootm_mapsize(void);
+void memmove_wd(void *to, void *from, size_t len, ulong chunksz);
 #endif
 
-static inline int image_check_magic (const image_header_t *hdr)
+static inline int image_check_magic(const image_header_t *hdr)
 {
-	return (image_get_magic (hdr) == IH_MAGIC);
+	return (image_get_magic(hdr) == IH_MAGIC);
 }
-static inline int image_check_type (const image_header_t *hdr, uint8_t type)
+static inline int image_check_type(const image_header_t *hdr, uint8_t type)
 {
-	return (image_get_type (hdr) == type);
+	return (image_get_type(hdr) == type);
 }
-static inline int image_check_arch (const image_header_t *hdr, uint8_t arch)
+static inline int image_check_arch(const image_header_t *hdr, uint8_t arch)
 {
-	return (image_get_arch (hdr) == arch);
+	return (image_get_arch(hdr) == arch);
 }
-static inline int image_check_os (const image_header_t *hdr, uint8_t os)
+static inline int image_check_os(const image_header_t *hdr, uint8_t os)
 {
-	return (image_get_os (hdr) == os);
+	return (image_get_os(hdr) == os);
 }
 
-ulong image_multi_count (const image_header_t *hdr);
-void image_multi_getimg (const image_header_t *hdr, ulong idx,
+ulong image_multi_count(const image_header_t *hdr);
+void image_multi_getimg(const image_header_t *hdr, ulong idx,
 			ulong *data, ulong *len);
 
-void image_print_contents (const void *hdr);
+void image_print_contents(const void *hdr);
 
 #ifndef USE_HOSTCC
-static inline int image_check_target_arch (const image_header_t *hdr)
+static inline int image_check_target_arch(const image_header_t *hdr)
 {
-#if defined(__ARM__)
-	if (!image_check_arch (hdr, IH_ARCH_ARM))
-#elif defined(__avr32__)
-	if (!image_check_arch (hdr, IH_ARCH_AVR32))
-#elif defined(__bfin__)
-	if (!image_check_arch (hdr, IH_ARCH_BLACKFIN))
-#elif defined(__I386__)
-	if (!image_check_arch (hdr, IH_ARCH_I386))
-#elif defined(__M68K__)
-	if (!image_check_arch (hdr, IH_ARCH_M68K))
-#elif defined(__microblaze__)
-	if (!image_check_arch (hdr, IH_ARCH_MICROBLAZE))
-#elif defined(__mips__)
-	if (!image_check_arch (hdr, IH_ARCH_MIPS))
-#elif defined(__nios2__)
-	if (!image_check_arch (hdr, IH_ARCH_NIOS2))
-#elif defined(__PPC__)
-	if (!image_check_arch (hdr, IH_ARCH_PPC))
-#elif defined(__sh__)
-	if (!image_check_arch (hdr, IH_ARCH_SH))
-#elif defined(__sparc__)
-	if (!image_check_arch (hdr, IH_ARCH_SPARC))
-#else
-# error Unknown CPU type
+#ifndef IH_ARCH_DEFAULT
+# error "please define IH_ARCH_DEFAULT in your arch asm/u-boot.h"
 #endif
-		return 0;
-
-	return 1;
+	return image_check_arch(hdr, IH_ARCH_DEFAULT);
 }
 #endif /* USE_HOSTCC */
+
+/**
+ * Set up properties in the FDT
+ *
+ * This sets up properties in the FDT that is to be passed to linux.
+ *
+ * @images:	Images information
+ * @blob:	FDT to update
+ * @of_size:	Size of the FDT
+ * @lmb:	Points to logical memory block structure
+ * @return 0 if ok, <0 on failure
+ */
+int image_setup_libfdt(bootm_headers_t *images, void *blob,
+		       int of_size, struct lmb *lmb);
+
+/**
+ * Set up the FDT to use for booting a kernel
+ *
+ * This performs ramdisk setup, sets up the FDT if required, and adds
+ * paramters to the FDT if libfdt is available.
+ *
+ * @param images	Images information
+ * @return 0 if ok, <0 on failure
+ */
+int image_setup_linux(bootm_headers_t *images);
+
+/**
+ * bootz_setup() - Extract stat and size of a Linux xImage
+ *
+ * @image: Address of image
+ * @start: Returns start address of image
+ * @end : Returns end address of image
+ * @return 0 if OK, 1 if the image was not recognised
+ */
+int bootz_setup(ulong image, ulong *start, ulong *end);
+
 
 /*******************************************************************/
 /* New uImage format specific code (prefixed with fit_) */
@@ -521,10 +682,12 @@ static inline int image_check_target_arch (const image_header_t *hdr)
 #define FIT_IMAGES_PATH		"/images"
 #define FIT_CONFS_PATH		"/configurations"
 
-/* hash node */
+/* hash/signature node */
 #define FIT_HASH_NODENAME	"hash"
 #define FIT_ALGO_PROP		"algo"
 #define FIT_VALUE_PROP		"value"
+#define FIT_IGNORE_PROP		"uboot-ignore"
+#define FIT_SIG_NODENAME	"signature"
 
 /* image node */
 #define FIT_DATA_PROP		"data"
@@ -546,14 +709,13 @@ static inline int image_check_target_arch (const image_header_t *hdr)
 #define FIT_MAX_HASH_LEN	20	/* max(crc32_len(4), sha1_len(20)) */
 
 /* cmdline argument format parsing */
-inline int fit_parse_conf (const char *spec, ulong addr_curr,
+int fit_parse_conf(const char *spec, ulong addr_curr,
 		ulong *addr, const char **conf_name);
-inline int fit_parse_subimage (const char *spec, ulong addr_curr,
+int fit_parse_subimage(const char *spec, ulong addr_curr,
 		ulong *addr, const char **image_name);
 
-void fit_print_contents (const void *fit);
-void fit_image_print (const void *fit, int noffset, const char *p);
-void fit_image_print_hash (const void *fit, int noffset, const char *p);
+void fit_print_contents(const void *fit);
+void fit_image_print(const void *fit, int noffset, const char *p);
 
 /**
  * fit_get_end - get FIT image size
@@ -562,9 +724,9 @@ void fit_image_print_hash (const void *fit, int noffset, const char *p);
  * returns:
  *     size of the FIT image (blob) in memory
  */
-static inline ulong fit_get_size (const void *fit)
+static inline ulong fit_get_size(const void *fit)
 {
-	return fdt_totalsize (fit);
+	return fdt_totalsize(fit);
 }
 
 /**
@@ -574,9 +736,9 @@ static inline ulong fit_get_size (const void *fit)
  * returns:
  *     end address of the FIT image (blob) in memory
  */
-static inline ulong fit_get_end (const void *fit)
+static inline ulong fit_get_end(const void *fit)
 {
-	return (ulong)fit + fdt_totalsize (fit);
+	return (ulong)fit + fdt_totalsize(fit);
 }
 
 /**
@@ -587,90 +749,258 @@ static inline ulong fit_get_end (const void *fit)
  *     NULL, on error
  *     pointer to node name, on success
  */
-static inline const char *fit_get_name (const void *fit_hdr,
+static inline const char *fit_get_name(const void *fit_hdr,
 		int noffset, int *len)
 {
-	return fdt_get_name (fit_hdr, noffset, len);
+	return fdt_get_name(fit_hdr, noffset, len);
 }
 
-int fit_get_desc (const void *fit, int noffset, char **desc);
-int fit_get_timestamp (const void *fit, int noffset, time_t *timestamp);
+int fit_get_desc(const void *fit, int noffset, char **desc);
+int fit_get_timestamp(const void *fit, int noffset, time_t *timestamp);
 
-int fit_image_get_node (const void *fit, const char *image_uname);
-int fit_image_get_os (const void *fit, int noffset, uint8_t *os);
-int fit_image_get_arch (const void *fit, int noffset, uint8_t *arch);
-int fit_image_get_type (const void *fit, int noffset, uint8_t *type);
-int fit_image_get_comp (const void *fit, int noffset, uint8_t *comp);
-int fit_image_get_load (const void *fit, int noffset, ulong *load);
-int fit_image_get_entry (const void *fit, int noffset, ulong *entry);
-int fit_image_get_data (const void *fit, int noffset,
+int fit_image_get_node(const void *fit, const char *image_uname);
+int fit_image_get_os(const void *fit, int noffset, uint8_t *os);
+int fit_image_get_arch(const void *fit, int noffset, uint8_t *arch);
+int fit_image_get_type(const void *fit, int noffset, uint8_t *type);
+int fit_image_get_comp(const void *fit, int noffset, uint8_t *comp);
+int fit_image_get_load(const void *fit, int noffset, ulong *load);
+int fit_image_get_entry(const void *fit, int noffset, ulong *entry);
+int fit_image_get_data(const void *fit, int noffset,
 				const void **data, size_t *size);
 
-int fit_image_hash_get_algo (const void *fit, int noffset, char **algo);
-int fit_image_hash_get_value (const void *fit, int noffset, uint8_t **value,
+int fit_image_hash_get_algo(const void *fit, int noffset, char **algo);
+int fit_image_hash_get_value(const void *fit, int noffset, uint8_t **value,
 				int *value_len);
 
-int fit_set_timestamp (void *fit, int noffset, time_t timestamp);
-int fit_set_hashes (void *fit);
-int fit_image_set_hashes (void *fit, int image_noffset);
-int fit_image_hash_set_value (void *fit, int noffset, uint8_t *value,
-				int value_len);
+int fit_set_timestamp(void *fit, int noffset, time_t timestamp);
 
-int fit_image_check_hashes (const void *fit, int noffset);
-int fit_all_image_check_hashes (const void *fit);
-int fit_image_check_os (const void *fit, int noffset, uint8_t os);
-int fit_image_check_arch (const void *fit, int noffset, uint8_t arch);
-int fit_image_check_type (const void *fit, int noffset, uint8_t type);
-int fit_image_check_comp (const void *fit, int noffset, uint8_t comp);
-int fit_check_format (const void *fit);
+/**
+ * fit_add_verification_data() - add verification data to FIT image nodes
+ *
+ * @keydir:	Directory containing keys
+ * @kwydest:	FDT blob to write public key information to
+ * @fit:	Pointer to the FIT format image header
+ * @comment:	Comment to add to signature nodes
+ * @require_keys: Mark all keys as 'required'
+ *
+ * Adds hash values for all component images in the FIT blob.
+ * Hashes are calculated for all component images which have hash subnodes
+ * with algorithm property set to one of the supported hash algorithms.
+ *
+ * Also add signatures if signature nodes are present.
+ *
+ * returns
+ *     0, on success
+ *     libfdt error code, on failure
+ */
+int fit_add_verification_data(const char *keydir, void *keydest, void *fit,
+			      const char *comment, int require_keys);
 
-int fit_conf_get_node (const void *fit, const char *conf_uname);
-int fit_conf_get_kernel_node (const void *fit, int noffset);
-int fit_conf_get_ramdisk_node (const void *fit, int noffset);
-int fit_conf_get_fdt_node (const void *fit, int noffset);
+int fit_image_verify(const void *fit, int noffset);
+int fit_config_verify(const void *fit, int conf_noffset);
+int fit_all_image_verify(const void *fit);
+int fit_image_check_os(const void *fit, int noffset, uint8_t os);
+int fit_image_check_arch(const void *fit, int noffset, uint8_t arch);
+int fit_image_check_type(const void *fit, int noffset, uint8_t type);
+int fit_image_check_comp(const void *fit, int noffset, uint8_t comp);
+int fit_check_format(const void *fit);
 
-void fit_conf_print (const void *fit, int noffset, const char *p);
+int fit_conf_find_compat(const void *fit, const void *fdt);
+int fit_conf_get_node(const void *fit, const char *conf_uname);
 
-#ifndef USE_HOSTCC
-static inline int fit_image_check_target_arch (const void *fdt, int node)
-{
-#if defined(__ARM__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_ARM))
-#elif defined(__avr32__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_AVR32))
-#elif defined(__bfin__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_BLACKFIN))
-#elif defined(__I386__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_I386))
-#elif defined(__M68K__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_M68K))
-#elif defined(__microblaze__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_MICROBLAZE))
-#elif defined(__mips__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_MIPS))
-#elif defined(__nios2__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_NIOS2))
-#elif defined(__PPC__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_PPC))
-#elif defined(__sh__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_SH))
-#elif defined(__sparc__)
-	if (!fit_image_check_arch (fdt, node, IH_ARCH_SPARC))
+/**
+ * fit_conf_get_prop_node() - Get node refered to by a configuration
+ * @fit:	FIT to check
+ * @noffset:	Offset of conf@xxx node to check
+ * @prop_name:	Property to read from the conf node
+ *
+ * The conf@ nodes contain references to other nodes, using properties
+ * like 'kernel = "kernel@1"'. Given such a property name (e.g. "kernel"),
+ * return the offset of the node referred to (e.g. offset of node
+ * "/images/kernel@1".
+ */
+int fit_conf_get_prop_node(const void *fit, int noffset,
+		const char *prop_name);
+
+void fit_conf_print(const void *fit, int noffset, const char *p);
+
+int fit_check_ramdisk(const void *fit, int os_noffset,
+		uint8_t arch, int verify);
+
+int calculate_hash(const void *data, int data_len, const char *algo,
+			uint8_t *value, int *value_len);
+
+/*
+ * At present we only support signing on the host, and verification on the
+ * device
+ */
+#if defined(CONFIG_FIT_SIGNATURE)
+# ifdef USE_HOSTCC
+#  define IMAGE_ENABLE_SIGN	1
+#  define IMAGE_ENABLE_VERIFY	0
 #else
-# error Unknown CPU type
+#  define IMAGE_ENABLE_SIGN	0
+#  define IMAGE_ENABLE_VERIFY	1
+# endif
+#else
+# define IMAGE_ENABLE_SIGN	0
+# define IMAGE_ENABLE_VERIFY	0
 #endif
-		return 0;
 
-	return 1;
+#ifdef USE_HOSTCC
+# define gd_fdt_blob()		NULL
+#else
+# define gd_fdt_blob()		(gd->fdt_blob)
+#endif
+
+#ifdef CONFIG_FIT_BEST_MATCH
+#define IMAGE_ENABLE_BEST_MATCH	1
+#else
+#define IMAGE_ENABLE_BEST_MATCH	0
+#endif
+
+/* Information passed to the signing routines */
+struct image_sign_info {
+	const char *keydir;		/* Directory conaining keys */
+	const char *keyname;		/* Name of key to use */
+	void *fit;			/* Pointer to FIT blob */
+	int node_offset;		/* Offset of signature node */
+	struct image_sig_algo *algo;	/* Algorithm information */
+	const void *fdt_blob;		/* FDT containing public keys */
+	int required_keynode;		/* Node offset of key to use: -1=any */
+	const char *require_keys;	/* Value for 'required' property */
+};
+
+/* A part of an image, used for hashing */
+struct image_region {
+	const void *data;
+	int size;
+};
+
+struct image_sig_algo {
+	const char *name;		/* Name of algorithm */
+
+	/**
+	 * sign() - calculate and return signature for given input data
+	 *
+	 * @info:	Specifies key and FIT information
+	 * @data:	Pointer to the input data
+	 * @data_len:	Data length
+	 * @sigp:	Set to an allocated buffer holding the signature
+	 * @sig_len:	Set to length of the calculated hash
+	 *
+	 * This computes input data signature according to selected algorithm.
+	 * Resulting signature value is placed in an allocated buffer, the
+	 * pointer is returned as *sigp. The length of the calculated
+	 * signature is returned via the sig_len pointer argument. The caller
+	 * should free *sigp.
+	 *
+	 * @return: 0, on success, -ve on error
+	 */
+	int (*sign)(struct image_sign_info *info,
+		    const struct image_region region[],
+		    int region_count, uint8_t **sigp, uint *sig_len);
+
+	/**
+	 * add_verify_data() - Add verification information to FDT
+	 *
+	 * Add public key information to the FDT node, suitable for
+	 * verification at run-time. The information added depends on the
+	 * algorithm being used.
+	 *
+	 * @info:	Specifies key and FIT information
+	 * @keydest:	Destination FDT blob for public key data
+	 * @return: 0, on success, -ve on error
+	 */
+	int (*add_verify_data)(struct image_sign_info *info, void *keydest);
+
+	/**
+	 * verify() - Verify a signature against some data
+	 *
+	 * @info:	Specifies key and FIT information
+	 * @data:	Pointer to the input data
+	 * @data_len:	Data length
+	 * @sig:	Signature
+	 * @sig_len:	Number of bytes in signature
+	 * @return 0 if verified, -ve on error
+	 */
+	int (*verify)(struct image_sign_info *info,
+		      const struct image_region region[], int region_count,
+		      uint8_t *sig, uint sig_len);
+};
+
+/**
+ * image_get_sig_algo() - Look up a signature algortihm
+ *
+ * @param name		Name of algorithm
+ * @return pointer to algorithm information, or NULL if not found
+ */
+struct image_sig_algo *image_get_sig_algo(const char *name);
+
+/**
+ * fit_image_verify_required_sigs() - Verify signatures marked as 'required'
+ *
+ * @fit:		FIT to check
+ * @image_noffset:	Offset of image node to check
+ * @data:		Image data to check
+ * @size:		Size of image data
+ * @sig_blob:		FDT containing public keys
+ * @no_sigsp:		Returns 1 if no signatures were required, and
+ *			therefore nothing was checked. The caller may wish
+ *			to fall back to other mechanisms, or refuse to
+ *			boot.
+ * @return 0 if all verified ok, <0 on error
+ */
+int fit_image_verify_required_sigs(const void *fit, int image_noffset,
+		const char *data, size_t size, const void *sig_blob,
+		int *no_sigsp);
+
+/**
+ * fit_image_check_sig() - Check a single image signature node
+ *
+ * @fit:		FIT to check
+ * @noffset:		Offset of signature node to check
+ * @data:		Image data to check
+ * @size:		Size of image data
+ * @required_keynode:	Offset in the control FDT of the required key node,
+ *			if any. If this is given, then the image wil not
+ *			pass verification unless that key is used. If this is
+ *			-1 then any signature will do.
+ * @err_msgp:		In the event of an error, this will be pointed to a
+ *			help error string to display to the user.
+ * @return 0 if all verified ok, <0 on error
+ */
+int fit_image_check_sig(const void *fit, int noffset, const void *data,
+		size_t size, int required_keynode, char **err_msgp);
+
+/**
+ * fit_region_make_list() - Make a list of regions to hash
+ *
+ * Given a list of FIT regions (offset, size) provided by libfdt, create
+ * a list of regions (void *, size) for use by the signature creationg
+ * and verification code.
+ *
+ * @fit:		FIT image to process
+ * @fdt_regions:	Regions as returned by libfdt
+ * @count:		Number of regions returned by libfdt
+ * @region:		Place to put list of regions (NULL to allocate it)
+ * @return pointer to list of regions, or NULL if out of memory
+ */
+struct image_region *fit_region_make_list(const void *fit,
+		struct fdt_region *fdt_regions, int count,
+		struct image_region *region);
+
+static inline int fit_image_check_target_arch(const void *fdt, int node)
+{
+	return fit_image_check_arch(fdt, node, IH_ARCH_DEFAULT);
 }
-#endif /* USE_HOSTCC */
 
 #ifdef CONFIG_FIT_VERBOSE
-#define fit_unsupported(msg)	printf ("! %s:%d " \
+#define fit_unsupported(msg)	printf("! %s:%d " \
 				"FIT images not supported for '%s'\n", \
 				__FILE__, __LINE__, (msg))
 
-#define fit_unsupported_reset(msg)	printf ("! %s:%d " \
+#define fit_unsupported_reset(msg)	printf("! %s:%d " \
 				"FIT images not supported for '%s' " \
 				"- must reset board to recover!\n", \
 				__FILE__, __LINE__, (msg))

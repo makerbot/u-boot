@@ -53,7 +53,6 @@ COBJS	+= ecc.o
 COBJS-$(CONFIG_CMD_ECCTEST) += cmd_ecctest.o
 COBJS	+= fdt.o
 COBJS	+= interrupts.o
-COBJS	+= iop480_uart.o
 COBJS-$(CONFIG_CMD_REGINFO) += reginfo.o
 COBJS	+= sdram.o
 COBJS	+= speed.o
@@ -61,13 +60,16 @@ COBJS	+= tlb.o
 COBJS	+= traps.o
 COBJS	+= usb.o
 COBJS	+= usb_ohci.o
-COBJS	+= usbdev.o
 COBJS-$(CONFIG_XILINX_440) += xilinx_irq.o
 ifndef CONFIG_XILINX_440
 COBJS	+= 4xx_uart.o
 COBJS	+= gpio.o
 COBJS	+= miiphy.o
 COBJS	+= uic.o
+endif
+
+ifdef CONFIG_SPL_BUILD
+COBJS-y += spl_boot.o
 endif
 
 SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)

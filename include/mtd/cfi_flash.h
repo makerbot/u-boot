@@ -32,6 +32,8 @@
 #define FLASH_CMD_ERASE_CONFIRM		0xD0
 #define FLASH_CMD_WRITE			0x40
 #define FLASH_CMD_PROTECT		0x60
+#define FLASH_CMD_SETUP			0x60
+#define FLASH_CMD_SET_CR_CONFIRM	0x03
 #define FLASH_CMD_PROTECT_SET		0x01
 #define FLASH_CMD_PROTECT_CLEAR		0xD0
 #define FLASH_CMD_CLEAR_STATUS		0x50
@@ -58,6 +60,13 @@
 #define AMD_CMD_UNLOCK_ACK		0x55
 #define AMD_CMD_WRITE_TO_BUFFER		0x25
 #define AMD_CMD_WRITE_BUFFER_CONFIRM	0x29
+#define AMD_CMD_SET_PPB_ENTRY		0xC0
+#define AMD_CMD_SET_PPB_EXIT_BC1	0x90
+#define AMD_CMD_SET_PPB_EXIT_BC2	0x00
+#define AMD_CMD_PPB_UNLOCK_BC1		0x80
+#define AMD_CMD_PPB_UNLOCK_BC2		0x30
+#define AMD_CMD_PPB_LOCK_BC1		0xA0
+#define AMD_CMD_PPB_LOCK_BC2		0x00
 
 #define AMD_STATUS_TOGGLE		0x40
 #define AMD_STATUS_ERROR		0x20
@@ -120,12 +129,16 @@ typedef union {
 } cfiword_t;
 
 /* CFI standard query structure */
+/* The offsets and sizes of this packed structure members correspond
+ * to the actual layout in CFI Flash chips. Some 16- and 32-bit members
+ * are unaligned and must be accessed with explicit unaligned access macros.
+ */
 struct cfi_qry {
 	u8	qry[3];
-	u16	p_id;
-	u16	p_adr;
-	u16	a_id;
-	u16	a_adr;
+	u16	p_id;			/* unaligned */
+	u16	p_adr;			/* unaligned */
+	u16	a_id;			/* unaligned */
+	u16	a_adr;			/* unaligned */
 	u8	vcc_min;
 	u8	vcc_max;
 	u8	vpp_min;
@@ -139,10 +152,10 @@ struct cfi_qry {
 	u8	block_erase_timeout_max;
 	u8	chip_erase_timeout_max;
 	u8	dev_size;
-	u16	interface_desc;
-	u16	max_buf_write_size;
+	u16	interface_desc;		/* aligned */
+	u16	max_buf_write_size;	/* aligned */
 	u8	num_erase_regions;
-	u32	erase_region_info[NUM_ERASE_REGIONS];
+	u32	erase_region_info[NUM_ERASE_REGIONS];	/* unaligned */
 } __attribute__((packed));
 
 struct cfi_pri_hdr {

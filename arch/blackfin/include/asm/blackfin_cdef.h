@@ -6,6 +6,12 @@
 #ifndef __MACH_CDEF_BLACKFIN__
 #define __MACH_CDEF_BLACKFIN__
 
+#ifdef __ADSPBF504__
+# include "mach-bf506/BF504_cdef.h"
+#endif
+#ifdef __ADSPBF506__
+# include "mach-bf506/BF506_cdef.h"
+#endif
 #ifdef __ADSPBF512__
 # include "mach-bf518/BF512_cdef.h"
 #endif
@@ -77,6 +83,9 @@
 #endif
 #ifdef __ADSPBF561__
 # include "mach-bf561/BF561_cdef.h"
+#endif
+#ifdef __ADSPBF609__
+# include "mach-bf609/BF609_cdef.h"
 #endif
 
 #endif /* __MACH_CDEF_BLACKFIN__ */

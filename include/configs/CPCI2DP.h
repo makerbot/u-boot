@@ -91,9 +91,6 @@
 #define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt	*/
 
 #undef	CONFIG_SYS_HUSH_PARSER			/* use "hush" command parser	*/
-#ifdef	CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
-#endif
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE	1024		/* Console I/O Buffer Size	*/
@@ -149,6 +146,7 @@
 #define PCI_HOST_AUTO   2               /* detected via arbiter enable  */
 
 #define CONFIG_PCI			/* include pci support	        */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_HOST	PCI_HOST_AUTO   /* select pci host function     */
 #define CONFIG_PCI_PNP			/* do pci plug-and-play         */
 					/* resource configuration       */

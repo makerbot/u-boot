@@ -191,9 +191,6 @@ static inline long IS_ERR(const void *ptr)
 	return IS_ERR_VALUE((unsigned long)ptr);
 }
 
-/* Force a compilation error if condition is true */
-#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
-
 /* module */
 #define THIS_MODULE		0
 #define try_module_get(...)	1
@@ -217,6 +214,9 @@ static inline long IS_ERR(const void *ptr)
 extern int ubi_mtd_param_parse(const char *val, struct kernel_param *kp);
 extern int ubi_init(void);
 extern void ubi_exit(void);
+extern int ubi_part(char *part_name, const char *vid_header_offset);
+extern int ubi_volume_write(char *volume, void *buf, size_t size);
+extern int ubi_volume_read(char *volume, char *buf, size_t size);
 
 extern struct ubi_device *ubi_devices[];
 

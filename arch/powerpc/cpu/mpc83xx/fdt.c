@@ -32,7 +32,8 @@ extern void ft_qe_setup(void *blob);
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if defined(CONFIG_BOOTCOUNT_LIMIT) && defined(CONFIG_MPC8360)
+#if defined(CONFIG_BOOTCOUNT_LIMIT) && \
+	(defined(CONFIG_QE))
 #include <asm/immap_qe.h>
 
 void fdt_fixup_muram (void *blob)
@@ -87,7 +88,8 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 				u32 tmp[] = { 32, 0x8, 33, 0x8, 34, 0x8 };
 
 				path = fdt_path_offset(blob, prop);
-				prop = fdt_getprop(blob, path, "interrupts", 0);
+				prop = fdt_getprop(blob, path, "interrupts",
+						   NULL);
 				if (prop)
 					fdt_setprop(blob, path, "interrupts",
 						    &tmp, sizeof(tmp));
@@ -99,7 +101,8 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 				u32 tmp[] = { 35, 0x8, 36, 0x8, 37, 0x8 };
 
 				path = fdt_path_offset(blob, prop);
-				prop = fdt_getprop(blob, path, "interrupts", 0);
+				prop = fdt_getprop(blob, path, "interrupts",
+						   NULL);
 				if (prop)
 					fdt_setprop(blob, path, "interrupts",
 						    &tmp, sizeof(tmp));
@@ -115,7 +118,7 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
 		"bus-frequency", bd->bi_busfreq, 1);
 	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
-		"clock-frequency", gd->core_clk, 1);
+		"clock-frequency", gd->arch.core_clk, 1);
 	do_fixup_by_prop_u32(blob, "device_type", "soc", 4,
 		"bus-frequency", bd->bi_busfreq, 1);
 	do_fixup_by_compat_u32(blob, "fsl,soc",

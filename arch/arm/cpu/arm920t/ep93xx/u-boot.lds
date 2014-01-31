@@ -31,29 +31,40 @@ SECTIONS
 	. = ALIGN(4);
 	.text      :
 	{
-	  arch/arm/cpu/arm920t/start.o	(.text)
+		*(.__image_copy_start)
+	  arch/arm/cpu/arm920t/start.o	(.text*)
 		/* the EP93xx expects to find the pattern 'CRUS' at 0x1000 */
 	  . = 0x1000;
 	  LONG(0x53555243)
-	  *(.text)
+	  *(.text*)
 	}
 
 	. = ALIGN(4);
-	.rodata : { *(.rodata) }
+	.rodata : { *(.rodata*) }
 
 	. = ALIGN(4);
-	.data : { *(.data) }
+	.data : { *(.data*) }
 
 	. = ALIGN(4);
 	.got : { *(.got) }
 
 	. = .;
-	__u_boot_cmd_start = .;
-	.u_boot_cmd : { *(.u_boot_cmd) }
-	__u_boot_cmd_end = .;
 
 	. = ALIGN(4);
+	.u_boot_list : {
+		KEEP(*(SORT(.u_boot_list*)));
+	}
+
+	. = ALIGN(4);
+
+	.image_copy_end :
+	{
+		*(.__image_copy_end)
+	}
+
 	__bss_start = .;
-	.bss : { *(.bss) }
+	.bss : { *(.bss*) }
+	__bss_end = .;
+
 	_end = .;
 }

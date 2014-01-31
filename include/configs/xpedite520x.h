@@ -48,6 +48,7 @@
 #define CONFIG_PCI_SCAN_SHOW	1	/* show pci devices on startup */
 #define CONFIG_PCI1		1	/* PCI controller 1 */
 #define CONFIG_FSL_PCI_INIT	1	/* Use common FSL init code */
+#define CONFIG_PCI_INDIRECT_BRIDGE 1	/* indirect PCI bridge support */
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 #define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
@@ -78,14 +79,8 @@
 #define CONFIG_BTB			/* toggle branch predition */
 #define CONFIG_ENABLE_36BIT_PHYS	1
 
-/*
- * Base addresses -- Note these are effective addresses where the
- * actual resources get mapped (not physical addresses)
- */
-#define CONFIG_SYS_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
-#define CONFIG_SYS_CCSRBAR		0xef000000	/* relocated CCSRBAR */
-#define CONFIG_SYS_CCSRBAR_PHYS	CONFIG_SYS_CCSRBAR	/* physical addr of CCSRBAR */
-#define CONFIG_SYS_IMMR		CONFIG_SYS_CCSRBAR	/* PQII uses CONFIG_SYS_IMMR */
+#define CONFIG_SYS_CCSRBAR		0xef000000
+#define CONFIG_SYS_CCSRBAR_PHYS_LOW	CONFIG_SYS_CCSRBAR
 
 /*
  * Diagnostics
@@ -214,7 +209,6 @@
  * Use the HUSH parser
  */
 #define CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2	"> "
 
 /*
  * Pass open firmware flat tree
@@ -290,7 +284,6 @@
  */
 #define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_PHY_GIGE		1	/* Include GbE speed/duplex detection */
-#define CONFIG_NET_MULTI	1
 #define CONFIG_MII		1	/* MII PHY management */
 #define CONFIG_ETHPRIME		"eTSEC1"
 
@@ -406,12 +399,12 @@
  * faf00000 - fbefffff     Sec OS image (16MB)
  * f8000000 - faefffff     Sec OS Use/Filesystem (47MB)
  */
-#define CONFIG_UBOOT1_ENV_ADDR	MK_STR(0xfff80000)
-#define CONFIG_UBOOT2_ENV_ADDR	MK_STR(0xfbf80000)
-#define CONFIG_FDT1_ENV_ADDR	MK_STR(0xfff00000)
-#define CONFIG_FDT2_ENV_ADDR	MK_STR(0xfbf00000)
-#define CONFIG_OS1_ENV_ADDR	MK_STR(0xfef00000)
-#define CONFIG_OS2_ENV_ADDR	MK_STR(0xfaf00000)
+#define CONFIG_UBOOT1_ENV_ADDR	__stringify(0xfff80000)
+#define CONFIG_UBOOT2_ENV_ADDR	__stringify(0xfbf80000)
+#define CONFIG_FDT1_ENV_ADDR	__stringify(0xfff00000)
+#define CONFIG_FDT2_ENV_ADDR	__stringify(0xfbf00000)
+#define CONFIG_OS1_ENV_ADDR	__stringify(0xfef00000)
+#define CONFIG_OS2_ENV_ADDR	__stringify(0xfaf00000)
 
 #define CONFIG_PROG_UBOOT1						\
 	"$download_cmd $loadaddr $ubootfile; "				\

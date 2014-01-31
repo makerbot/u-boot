@@ -41,7 +41,7 @@
 
 #define CONFIG_BAUDRATE		115200
 #define CONFIG_BOOTARGS		"console=ttySC0,115200"
-#define CONFIG_BOOTFILE		/boot/zImage
+#define CONFIG_BOOTFILE		"/boot/zImage"
 #define CONFIG_LOADADDR		0x8E000000
 
 #define CONFIG_VERSION_VARIABLE
@@ -52,6 +52,7 @@
 #define MS7720SE_FLASH_BASE_1		0xA0000000
 #define MS7720SE_FLASH_BANK_SIZE	(8 * 1024 * 1024)
 
+#define CONFIG_SYS_TEXT_BASE	0x8FFC0000
 #define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
 #define CONFIG_SYS_PROMPT	"=> "	/* Monitor Command Prompt */
 #define CONFIG_SYS_CBSIZE	256	/* Buffer size for input from the Console */

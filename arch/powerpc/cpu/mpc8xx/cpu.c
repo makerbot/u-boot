@@ -40,10 +40,11 @@
 #include <commproc.h>
 #include <netdev.h>
 #include <asm/cache.h>
+#include <linux/compiler.h>
+#include <asm/io.h>
 
 #if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
-#include <libfdt_env.h>
 #include <fdt_support.h>
 #endif
 
@@ -77,7 +78,8 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	if ((pvr >> 16) != 0x0050)
 		return -1;
 
-	k = (immr << 16) | *((ushort *) & immap->im_cpm.cp_dparam[0xB0]);
+	k = (immr << 16) |
+		immap->im_cpm.cp_dparam16[PROFF_REVNUM / sizeof(u16)];
 	m = 0;
 	suf = "";
 
@@ -185,7 +187,7 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	uint k, m;
 	char buf[32];
 	char pre = 'X';
-	char *mid = "xx";
+	__maybe_unused char *mid = "xx";
 	char *suf;
 
 	/* the highest 16 bits should be 0x0050 for a 8xx */
@@ -193,7 +195,8 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	if ((pvr >> 16) != 0x0050)
 		return -1;
 
-	k = (immr << 16) | *((ushort *) & immap->im_cpm.cp_dparam[0xB0]);
+	k = (immr << 16) |
+		immap->im_cpm.cp_dparam16[PROFF_REVNUM / sizeof(u16)];
 	m = 0;
 
 	switch (k) {
@@ -252,7 +255,8 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	if ((pvr >> 16) != 0x0050)
 		return -1;
 
-	k = (immr << 16) | *((ushort *) & immap->im_cpm.cp_dparam[0xB0]);
+	k = (immr << 16) |
+		in_be16(&immap->im_cpm.cp_dparam16[PROFF_REVNUM / sizeof(u16)]);
 	m = 0;
 
 	switch (k) {
@@ -311,7 +315,8 @@ static int check_CPU (long clock, uint pvr, uint immr)
 	if ((pvr >> 16) != 0x0050)
 		return -1;
 
-	k = (immr << 16) | *((ushort *) & immap->im_cpm.cp_dparam[0xB0]);
+	k = (immr << 16) |
+		immap->im_cpm.cp_dparam16[PROFF_REVNUM / sizeof(u16)];
 	m = 0;
 
 	switch (k) {

@@ -50,7 +50,6 @@
 
 #if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
-#include <libfdt_env.h>
 #include <fdt_support.h>
 #endif
 
@@ -107,7 +106,7 @@ int checkcpu (void)
 	 * in the mask.
 	 */
 	m = immr & (IMMR_PARTNUM_MSK | IMMR_MASKNUM_MSK);
-	k = *((ushort *) & immap->im_dprambase[PROFF_REVNUM]);
+	k = immap->im_dprambase16[PROFF_REVNUM / sizeof(u16)];
 
 	switch (m) {
 	case 0x0000:

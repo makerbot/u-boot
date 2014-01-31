@@ -33,12 +33,11 @@
 #include <bzlib.h>
 #include <environment.h>
 #include <asm/byteorder.h>
+#include <asm/mp.h>
 
 #if defined(CONFIG_OF_LIBFDT)
-#include <fdt.h>
 #include <libfdt.h>
 #include <fdt_support.h>
-
 #endif
 
 #ifdef CONFIG_SYS_INIT_RAM_LOCK
@@ -47,7 +46,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-extern int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 extern ulong get_effective_memsize(void);
 static ulong get_sp (void);
 static void set_clocks_in_mhz (bd_t *kbd);
@@ -69,7 +67,7 @@ static void boot_jump_linux(bootm_headers_t *images)
 	debug ("## Transferring control to Linux (at address %08lx) ...\n",
 		(ulong)kernel);
 
-	show_boot_progress (15);
+	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
 
 #if defined(CONFIG_SYS_INIT_RAM_LOCK) && !defined(CONFIG_E500)
 	unlock_ram_in_cache();
@@ -87,16 +85,10 @@ static void boot_jump_linux(bootm_headers_t *images)
 		 *   r8: 0
 		 *   r9: 0
 		 */
-#if defined(CONFIG_85xx) || defined(CONFIG_440)
- #define EPAPR_MAGIC	(0x45504150)
-#else
- #define EPAPR_MAGIC	(0x65504150)
-#endif
-
 		debug ("   Booting using OF flat tree...\n");
 		WATCHDOG_RESET ();
 		(*kernel) ((bd_t *)of_flat_tree, 0, 0, EPAPR_MAGIC,
-			   CONFIG_SYS_BOOTMAPSZ, 0, 0);
+			   getenv_bootm_mapsize(), 0, 0);
 		/* does not return */
 	} else
 #endif
@@ -167,22 +159,27 @@ void arch_lmb_reserve(struct lmb *lmb)
 	sp -= 4096;
 	lmb_reserve(lmb, sp, (CONFIG_SYS_SDRAM_BASE + get_effective_memsize() - sp));
 
+#ifdef CONFIG_MP
+	cpu_mp_lmb_reserve(lmb);
+#endif
+
 	return ;
 }
 
-static void boot_prep_linux(void)
+static void boot_prep_linux(bootm_headers_t *images)
 {
 #ifdef CONFIG_MP
-	/* if we are MP make sure to flush the dcache() to any changes are made
-	 * visibile to all other cores */
-	flush_dcache();
+	/*
+	 * if we are MP make sure to flush the device tree so any changes are
+	 * made visibile to all other cores.  In AMP boot scenarios the cores
+	 * might not be HW cache coherent with each other.
+	 */
+	flush_cache((unsigned long)images->ft_addr, images->ft_len);
 #endif
-	return ;
 }
 
 static int boot_cmdline_linux(bootm_headers_t *images)
 {
-	ulong bootmap_base = getenv_bootm_low();
 	ulong of_size = images->ft_len;
 	struct lmb *lmb = &images->lmb;
 	ulong *cmd_start = &images->cmdline_start;
@@ -192,7 +189,7 @@ static int boot_cmdline_linux(bootm_headers_t *images)
 
 	if (!of_size) {
 		/* allocate space and init command line */
-		ret = boot_get_cmdline (lmb, cmd_start, cmd_end, bootmap_base);
+		ret = boot_get_cmdline (lmb, cmd_start, cmd_end);
 		if (ret) {
 			puts("ERROR with allocation of cmdline\n");
 			return ret;
@@ -204,7 +201,6 @@ static int boot_cmdline_linux(bootm_headers_t *images)
 
 static int boot_bd_t_linux(bootm_headers_t *images)
 {
-	ulong bootmap_base = getenv_bootm_low();
 	ulong of_size = images->ft_len;
 	struct lmb *lmb = &images->lmb;
 	bd_t **kbd = &images->kbd;
@@ -213,7 +209,7 @@ static int boot_bd_t_linux(bootm_headers_t *images)
 
 	if (!of_size) {
 		/* allocate space for kernel copy of board info */
-		ret = boot_get_kbd (lmb, kbd, bootmap_base);
+		ret = boot_get_kbd (lmb, kbd);
 		if (ret) {
 			puts("ERROR with allocation of kernel bd\n");
 			return ret;
@@ -226,77 +222,21 @@ static int boot_bd_t_linux(bootm_headers_t *images)
 
 static int boot_body_linux(bootm_headers_t *images)
 {
-	ulong rd_len;
-	struct lmb *lmb = &images->lmb;
-	ulong *initrd_start = &images->initrd_start;
-	ulong *initrd_end = &images->initrd_end;
-#if defined(CONFIG_OF_LIBFDT)
-	ulong bootmap_base = getenv_bootm_low();
-	ulong of_size = images->ft_len;
-	char **of_flat_tree = &images->ft_addr;
-#endif
-
 	int ret;
-
-	/* allocate space and init command line */
-	ret = boot_cmdline_linux(images);
-	if (ret)
-		return ret;
 
 	/* allocate space for kernel copy of board info */
 	ret = boot_bd_t_linux(images);
 	if (ret)
 		return ret;
 
-	rd_len = images->rd_end - images->rd_start;
-	ret = boot_ramdisk_high (lmb, images->rd_start, rd_len, initrd_start, initrd_end);
+	ret = image_setup_linux(images);
 	if (ret)
 		return ret;
 
-#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_SYS_BOOTMAPSZ)
-	ret = boot_relocate_fdt(lmb, bootmap_base, of_flat_tree, &of_size);
-	if (ret)
-		return ret;
-
-	/*
-	 * Add the chosen node if it doesn't exist, add the env and bd_t
-	 * if the user wants it (the logic is in the subroutines).
-	 */
-	if (of_size) {
-		if (fdt_chosen(*of_flat_tree, 1) < 0) {
-			puts ("ERROR: ");
-			puts ("/chosen node create failed");
-			puts (" - must RESET the board to recover.\n");
-			return -1;
-		}
-#ifdef CONFIG_OF_BOARD_SETUP
-		/* Call the board-specific fixup routine */
-		ft_board_setup(*of_flat_tree, gd->bd);
-#endif
-
-		/* Delete the old LMB reservation */
-		lmb_free(lmb, (phys_addr_t)(u32)*of_flat_tree,
-				(phys_size_t)fdt_totalsize(*of_flat_tree));
-
-		ret = fdt_resize(*of_flat_tree);
-		if (ret < 0)
-			return ret;
-		of_size = ret;
-
-		if (*initrd_start && *initrd_end)
-			of_size += FDT_RAMDISK_OVERHEAD;
-		/* Create a new LMB reservation */
-		lmb_reserve(lmb, (ulong)*of_flat_tree, of_size);
-
-		/* fixup the initrd now that we know where it should be */
-		if (*initrd_start && *initrd_end)
-			fdt_initrd(*of_flat_tree, *initrd_start, *initrd_end, 1);
-	}
-#endif	/* CONFIG_OF_LIBFDT && CONFIG_SYS_BOOTMAPSZ */
 	return 0;
 }
 
-__attribute__((noinline))
+noinline
 int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *images)
 {
 	int	ret;
@@ -312,16 +252,11 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 	}
 
 	if (flag & BOOTM_STATE_OS_PREP) {
-		boot_prep_linux();
+		boot_prep_linux(images);
 		return 0;
 	}
 
-	if (flag & BOOTM_STATE_OS_GO) {
-		boot_jump_linux(images);
-		return 0;
-	}
-
-	boot_prep_linux();
+	boot_prep_linux(images);
 	ret = boot_body_linux(images);
 	if (ret)
 		return ret;
@@ -346,13 +281,6 @@ static void set_clocks_in_mhz (bd_t *kbd)
 		/* convert all clock information to MHz */
 		kbd->bi_intfreq /= 1000000L;
 		kbd->bi_busfreq /= 1000000L;
-#if defined(CONFIG_MPC8220)
-		kbd->bi_inpfreq /= 1000000L;
-		kbd->bi_pcifreq /= 1000000L;
-		kbd->bi_pevfreq /= 1000000L;
-		kbd->bi_flbfreq /= 1000000L;
-		kbd->bi_vcofreq /= 1000000L;
-#endif
 #if defined(CONFIG_CPM2)
 		kbd->bi_cpmfreq /= 1000000L;
 		kbd->bi_brgfreq /= 1000000L;

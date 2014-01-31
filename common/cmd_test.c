@@ -21,10 +21,19 @@
  * MA 02111-1307 USA
  */
 
+/*
+ * Define _STDBOOL_H here to avoid macro expansion of true and false.
+ * If the future code requires macro true or false, remove this define
+ * and undef true and false before U_BOOT_CMD. This define and comment
+ * shall be removed if change to U_BOOT_CMD is made to take string
+ * instead of stringifying it.
+ */
+#define _STDBOOL_H
+
 #include <common.h>
 #include <command.h>
 
-int do_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char * const *ap;
 	int left, adv, expr, last_expr, neg, last_cmp;
@@ -33,12 +42,12 @@ int do_test(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc < 3)
 		return 1;
 
-#if 0
+#ifdef DEBUG
 	{
-		printf("test:");
+		debug("test(%d):", argc);
 		left = 1;
 		while (argv[left])
-			printf(" %s", argv[left++]);
+			debug(" '%s'", argv[left++]);
 	}
 #endif
 
@@ -150,7 +159,7 @@ U_BOOT_CMD(
 	"[args..]"
 );
 
-int do_false(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_false(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	return 1;
 }
@@ -161,7 +170,7 @@ U_BOOT_CMD(
 	NULL
 );
 
-int do_true(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+static int do_true(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	return 0;
 }

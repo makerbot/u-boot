@@ -73,7 +73,6 @@
 #define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0	/* PHY address			*/
 #define CONFIG_LXT971_NO_SLEEP  1       /* disable sleep mode in LXT971 */
-#define CONFIG_NET_MULTI
 
 
 /*
@@ -158,6 +157,7 @@
 #define PCI_HOST_AUTO	2		/* detected via arbiter enable	*/
 
 #define CONFIG_PCI			/* include pci support		*/
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_HOST PCI_HOST_FORCE	/* select pci host function	*/
 #define CONFIG_PCI_PNP			/* do pci plug-and-play		*/
 					/* resource configuration	*/

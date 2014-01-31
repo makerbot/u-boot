@@ -39,11 +39,10 @@ typedef volatile unsigned char	vu_char;
 #include <linux/bitops.h>
 #include <linux/types.h>
 #include <linux/string.h>
+#include <linux/stringify.h>
 #include <asm/ptrace.h>
 #include <stdarg.h>
-#include <asm/cache.h>
-#include <bootstage.h>
-#if defined(CONFIG_PCI) && (defined(CONFIG_4xx) && !defined(CONFIG_AP1000))
+#if defined(CONFIG_PCI) && defined(CONFIG_4xx)
 #include <pci.h>
 #endif
 #if defined(CONFIG_8xx)
@@ -72,8 +71,6 @@ typedef volatile unsigned char	vu_char;
 #include <mpc5xxx.h>
 #elif defined(CONFIG_MPC512X)
 #include <asm/immap_512x.h>
-#elif defined(CONFIG_MPC8220)
-#include <asm/immap_8220.h>
 #elif defined(CONFIG_8260)
 #if   defined(CONFIG_MPC8247) \
    || defined(CONFIG_MPC8248) \
@@ -118,13 +115,40 @@ typedef volatile unsigned char	vu_char;
 #include <flash.h>
 #include <image.h>
 
-#ifdef	DEBUG
-#define debug(fmt,args...)	printf (fmt ,##args)
-#define debugX(level,fmt,args...) if (DEBUG>=level) printf(fmt,##args);
+#ifdef DEBUG
+#define _DEBUG	1
 #else
-#define debug(fmt,args...)
-#define debugX(level,fmt,args...)
-#endif	/* DEBUG */
+#define _DEBUG	0
+#endif
+
+/*
+ * Output a debug text when condition "cond" is met. The "cond" should be
+ * computed by a preprocessor in the best case, allowing for the best
+ * optimization.
+ */
+#define debug_cond(cond, fmt, args...)		\
+	do {					\
+		if (cond)			\
+			printf(fmt, ##args);	\
+	} while (0)
+
+#define debug(fmt, args...)			\
+	debug_cond(_DEBUG, fmt, ##args)
+
+/*
+ * An assertion is run-time check done in debug mode only. If DEBUG is not
+ * defined then it is skipped. If DEBUG is defined and the assertion fails,
+ * then it calls panic*( which may or may not reset/halt U-Boot (see
+ * CONFIG_PANIC_HANG), It is hoped that all failing assertions are found
+ * before release, and after release it is hoped that they don't matter. But
+ * in any case these failing assertions cannot be fixed with a reset (which
+ * may just do the same assertion again).
+ */
+void __assert_fail(const char *assertion, const char *file, unsigned line,
+		   const char *function);
+#define assert(x) \
+	({ if (!(x) && _DEBUG) \
+		__assert_fail(#x, __FILE__, __LINE__, __func__); })
 
 #define error(fmt, args...) do {					\
 		printf("ERROR: " fmt "\nat %s:%d/%s()\n",		\
@@ -138,6 +162,9 @@ typedef volatile unsigned char	vu_char;
 } while (0)
 #define BUG_ON(condition) do { if (unlikely((condition)!=0)) BUG(); } while(0)
 #endif /* BUG */
+
+/* Force a compilation error if condition is true */
+#define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
 typedef void (interrupt_handler_t)(void *);
 
@@ -166,31 +193,63 @@ typedef void (interrupt_handler_t)(void *);
 # endif
 #endif
 
-#ifndef CONFIG_SERIAL_MULTI
-
-#if defined(CONFIG_8xx_CONS_SMC1) || defined(CONFIG_8xx_CONS_SMC2) \
- || defined(CONFIG_8xx_CONS_SCC1) || defined(CONFIG_8xx_CONS_SCC2) \
- || defined(CONFIG_8xx_CONS_SCC3) || defined(CONFIG_8xx_CONS_SCC4)
-
-#define CONFIG_SERIAL_MULTI	1
-
-#endif
-
-#endif /* CONFIG_SERIAL_MULTI */
-
 /*
  * General Purpose Utilities
  */
 #define min(X, Y)				\
-	({ typeof (X) __x = (X), __y = (Y);	\
+	({ typeof(X) __x = (X);			\
+		typeof(Y) __y = (Y);		\
 		(__x < __y) ? __x : __y; })
 
 #define max(X, Y)				\
-	({ typeof (X) __x = (X), __y = (Y);	\
+	({ typeof(X) __x = (X);			\
+		typeof(Y) __y = (Y);		\
 		(__x > __y) ? __x : __y; })
 
 #define MIN(x, y)  min(x, y)
 #define MAX(x, y)  max(x, y)
+
+#define min3(X, Y, Z)				\
+	({ typeof(X) __x = (X);			\
+		typeof(Y) __y = (Y);		\
+		typeof(Z) __z = (Z);		\
+		__x < __y ? (__x < __z ? __x : __z) :	\
+		(__y < __z ? __y : __z); })
+
+#define max3(X, Y, Z)				\
+	({ typeof(X) __x = (X);			\
+		typeof(Y) __y = (Y);		\
+		typeof(Z) __z = (Z);		\
+		__x > __y ? (__x > __z ? __x : __z) :	\
+		(__y > __z ? __y : __z); })
+
+#define MIN3(x, y, z)  min3(x, y, z)
+#define MAX3(x, y, z)  max3(x, y, z)
+
+/*
+ * Return the absolute value of a number.
+ *
+ * This handles unsigned and signed longs, ints, shorts and chars.  For all
+ * input types abs() returns a signed long.
+ *
+ * For 64-bit types, use abs64()
+ */
+#define abs(x) ({						\
+		long ret;					\
+		if (sizeof(x) == sizeof(long)) {		\
+			long __x = (x);				\
+			ret = (__x < 0) ? -__x : __x;		\
+		} else {					\
+			int __x = (x);				\
+			ret = (__x < 0) ? -__x : __x;		\
+		}						\
+		ret;						\
+	})
+
+#define abs64(x) ({				\
+		s64 __x = (x);			\
+		(__x < 0) ? -__x : __x;		\
+	})
 
 #if defined(CONFIG_ENV_IS_EMBEDDED)
 #define TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
@@ -219,23 +278,42 @@ typedef void (interrupt_handler_t)(void *);
 
 void	hang		(void) __attribute__ ((noreturn));
 
+int	timer_init(void);
+int	cpu_init(void);
+
 /* */
 phys_size_t initdram (int);
 int	display_options (void);
 void	print_size(unsigned long long, const char *);
-int	print_buffer (ulong addr, void* data, uint width, uint count, uint linelen);
+int print_buffer(ulong addr, const void *data, uint width, uint count,
+		 uint linelen);
 
 /* common/main.c */
 void	main_loop	(void);
-int	run_command	(const char *cmd, int flag);
+int run_command(const char *cmd, int flag);
+
+/**
+ * Run a list of commands separated by ; or even \0
+ *
+ * Note that if 'len' is not -1, then the command does not need to be nul
+ * terminated, Memory will be allocated for the command in that case.
+ *
+ * @param cmd	List of commands to run, each separated bu semicolon
+ * @param len	Length of commands excluding terminator if known (-1 if not)
+ * @param flag	Execution flags (CMD_FLAG_...)
+ * @return 0 on success, or != 0 on error.
+ */
+int run_command_list(const char *cmd, int len, int flag);
 int	readline	(const char *const prompt);
-int	readline_into_buffer	(const char *const prompt, char * buffer);
+int	readline_into_buffer(const char *const prompt, char *buffer,
+			int timeout);
 int	parse_line (char *, char *[]);
 void	init_cmd_timeout(void);
 void	reset_cmd_timeout(void);
+extern char console_buffer[];
 
 /* arch/$(ARCH)/lib/board.c */
-void	board_init_f  (ulong) __attribute__ ((noreturn));
+void	board_init_f(ulong);
 void	board_init_r  (gd_t *, ulong) __attribute__ ((noreturn));
 int	checkboard    (void);
 int	checkflash    (void);
@@ -243,6 +321,29 @@ int	checkdram     (void);
 int	last_stage_init(void);
 extern ulong monitor_flash_len;
 int mac_read_from_eeprom(void);
+extern u8 _binary_dt_dtb_start[];	/* embedded device tree blob */
+int set_cpu_clk_info(void);
+int print_cpuinfo(void);
+int update_flash_size(int flash_size);
+
+/**
+ * Show the DRAM size in a board-specific way
+ *
+ * This is used by boards to display DRAM information in their own way.
+ *
+ * @param size	Size of DRAM (which should be displayed along with other info)
+ */
+void board_show_dram(ulong size);
+
+/**
+ * arch_fixup_memory_node() - Write arch-specific memory information to fdt
+ *
+ * Defined in arch/$(ARCH)/lib/bootm.c
+ *
+ * @blob:	FDT blob to write to
+ * @return 0 if ok, or -ve FDT_ERR_... on failure
+ */
+int arch_fixup_memory_node(void *blob);
 
 /* common/flash.c */
 void flash_perror (int);
@@ -251,30 +352,80 @@ void flash_perror (int);
 int	source (ulong addr, const char *fit_uname);
 
 extern ulong load_addr;		/* Default Load Address */
+extern ulong save_addr;		/* Default Save Address */
+extern ulong save_size;		/* Default Save Size */
 
 /* common/cmd_doc.c */
 void	doc_probe(unsigned long physadr);
+
+/* common/cmd_net.c */
+int do_tftpb(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
+
+/* common/cmd_fat.c */
+int do_fat_fsload(cmd_tbl_t *, int, int, char * const []);
+
+/* common/cmd_ext2.c */
+int do_ext2load(cmd_tbl_t *, int, int, char * const []);
 
 /* common/cmd_nvedit.c */
 int	env_init     (void);
 void	env_relocate (void);
 int	envmatch     (uchar *, int);
-char	*getenv	     (char *);
-int	getenv_f     (char *name, char *buf, unsigned len);
+char	*getenv	     (const char *);
+int	getenv_f     (const char *name, char *buf, unsigned len);
+ulong getenv_ulong(const char *name, int base, ulong default_val);
+
+/**
+ * getenv_hex() - Return an environment variable as a hex value
+ *
+ * Decode an environment as a hex number (it may or may not have a 0x
+ * prefix). If the environment variable cannot be found, or does not start
+ * with hex digits, the default value is returned.
+ *
+ * @varname:		Variable to decode
+ * @default_val:	Value to return on error
+ */
+ulong getenv_hex(const char *varname, ulong default_val);
+
+/*
+ * Read an environment variable as a boolean
+ * Return -1 if variable does not exist (default to true)
+ */
+int getenv_yesno(const char *var);
 int	saveenv	     (void);
-#ifdef CONFIG_PPC		/* ARM version to be fixed! */
-int inline setenv   (char *, char *);
-#else
-int	setenv	     (char *, char *);
-#endif /* CONFIG_PPC */
+int	setenv	     (const char *, const char *);
+int setenv_ulong(const char *varname, ulong value);
+int setenv_hex(const char *varname, ulong value);
+/**
+ * setenv_addr - Set an environment variable to an address in hex
+ *
+ * @varname:	Environmet variable to set
+ * @addr:	Value to set it to
+ * @return 0 if ok, 1 on error
+ */
+static inline int setenv_addr(const char *varname, const void *addr)
+{
+	return setenv_hex(varname, (ulong)addr);
+}
+
 #ifdef CONFIG_ARM
 # include <asm/mach-types.h>
 # include <asm/setup.h>
 # include <asm/u-boot-arm.h>	/* ARM version to be fixed! */
 #endif /* CONFIG_ARM */
-#ifdef CONFIG_I386		/* x86 version to be fixed! */
-# include <asm/u-boot-i386.h>
-#endif /* CONFIG_I386 */
+#ifdef CONFIG_X86		/* x86 version to be fixed! */
+# include <asm/u-boot-x86.h>
+#endif /* CONFIG_X86 */
+#ifdef CONFIG_SANDBOX
+# include <asm/u-boot-sandbox.h>	/* TODO(sjg) what needs to be fixed? */
+#endif
+#ifdef CONFIG_NDS32
+# include <asm/mach-types.h>
+# include <asm/u-boot-nds32.h>
+#endif /* CONFIG_NDS32 */
+#ifdef CONFIG_MIPS
+# include <asm/u-boot-mips.h>
+#endif /* CONFIG_MIPS */
 
 #ifdef CONFIG_AUTO_COMPLETE
 int env_complete(char *var, int maxv, char *cmdv[], int maxsz, char *buf);
@@ -285,7 +436,7 @@ void	pci_init      (void);
 void	pci_init_board(void);
 void	pciinfo	      (int, int);
 
-#if defined(CONFIG_PCI) && (defined(CONFIG_4xx) && !defined(CONFIG_AP1000))
+#if defined(CONFIG_PCI) && defined(CONFIG_4xx)
     int	   pci_pre_init	       (struct pci_controller *);
     int	   is_pci_host	       (struct pci_controller *);
 #endif
@@ -317,7 +468,7 @@ const char *symbol_lookup(unsigned long addr, unsigned long *caddr);
 void	api_init (void);
 
 /* common/memsize.c */
-long	get_ram_size  (volatile long *, long);
+long	get_ram_size  (long *, long);
 
 /* $(BOARD)/$(BOARD).c */
 void	reset_phy     (void);
@@ -413,7 +564,12 @@ void	icache_disable(void);
 int	dcache_status (void);
 void	dcache_enable (void);
 void	dcache_disable(void);
-void	relocate_code (ulong, gd_t *, ulong) __attribute__ ((noreturn));
+void	mmu_disable(void);
+#if defined(CONFIG_ARM)
+void	relocate_code(ulong);
+#else
+void	relocate_code(ulong, gd_t *, ulong) __attribute__ ((noreturn));
+#endif
 ulong	get_endaddr   (void);
 void	trap_init     (ulong);
 #if defined (CONFIG_4xx)	|| \
@@ -422,7 +578,6 @@ void	trap_init     (ulong);
     defined (CONFIG_74x)	|| \
     defined (CONFIG_75x)	|| \
     defined (CONFIG_74xx)	|| \
-    defined (CONFIG_MPC8220)	|| \
     defined (CONFIG_MPC85xx)	|| \
     defined (CONFIG_MPC86xx)	|| \
     defined (CONFIG_MPC83xx)
@@ -449,10 +604,30 @@ void		out16(unsigned int, unsigned short value);
 #if defined (CONFIG_MPC83xx)
 void		ppcDWload(unsigned int *addr, unsigned int *ret);
 void		ppcDWstore(unsigned int *addr, unsigned int *value);
+void disable_addr_trans(void);
+void enable_addr_trans(void);
+#if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
+void ddr_enable_ecc(unsigned int dram_size);
+#endif
 #endif
 
 /* $(CPU)/cpu.c */
+static inline int cpumask_next(int cpu, unsigned int mask)
+{
+	for (cpu++; !((1 << cpu) & mask); cpu++)
+		;
+
+	return cpu;
+}
+
+#define for_each_cpu(iter, cpu, num_cpus, mask) \
+	for (iter = 0, cpu = cpumask_next(-1, mask); \
+		iter < num_cpus; \
+		iter++, cpu = cpumask_next(cpu, mask)) \
+
 int	cpu_numcores  (void);
+u32	cpu_mask      (void);
+int	is_core_valid (unsigned int);
 int	probecpu      (void);
 int	checkcpu      (void);
 int	checkicache   (void);
@@ -470,7 +645,6 @@ void ft_pci_setup(void *blob, bd_t *bd);
 
 /* $(CPU)/serial.c */
 int	serial_init   (void);
-void	serial_exit   (void);
 void	serial_setbrg (void);
 void	serial_putc   (const char);
 void	serial_putc_raw(const char);
@@ -495,19 +669,12 @@ int	prt_8260_clks (void);
 #elif defined(CONFIG_MPC5xxx)
 int	prt_mpc5xxx_clks (void);
 #endif
-#if defined(CONFIG_MPC512X)
-int	prt_mpc512xxx_clks (void);
-#endif
-#if defined(CONFIG_MPC8220)
-int	prt_mpc8220_clks (void);
-#endif
 #ifdef CONFIG_4xx
 ulong	get_OPB_freq (void);
 ulong	get_PCI_freq (void);
 #endif
 #if defined(CONFIG_S3C24X0) || \
     defined(CONFIG_LH7A40X) || \
-    defined(CONFIG_S3C6400) || \
     defined(CONFIG_EP93XX)
 ulong	get_FCLK (void);
 ulong	get_HCLK (void);
@@ -532,17 +699,23 @@ ulong get_PERCLK3(void);
 ulong	get_bus_freq  (ulong);
 int get_serial_clock(void);
 
+#if defined(CONFIG_MPC83xx) || defined(CONFIG_MPC85xx)
+ulong get_ddr_freq(ulong);
+#endif
 #if defined(CONFIG_MPC85xx)
 typedef MPC85xx_SYS_INFO sys_info_t;
 void	get_sys_info  ( sys_info_t * );
-ulong	get_ddr_freq  (ulong);
 #endif
 #if defined(CONFIG_MPC86xx)
 typedef MPC86xx_SYS_INFO sys_info_t;
 void   get_sys_info  ( sys_info_t * );
+static inline ulong get_ddr_freq(ulong dummy)
+{
+	return get_bus_freq(dummy);
+}
 #endif
 
-#if defined(CONFIG_4xx) || defined(CONFIG_IOP480)
+#if defined(CONFIG_4xx)
 #  if defined(CONFIG_440)
 #	if defined(CONFIG_440SPE)
 	 unsigned long determine_sysper(void);
@@ -577,7 +750,10 @@ void	irq_install_handler(int, interrupt_handler_t *, void *);
 void	irq_free_handler   (int);
 void	reset_timer	   (void);
 ulong	get_timer	   (ulong base);
-void	set_timer	   (ulong t);
+
+/* Return value of monotonic microsecond timer */
+unsigned long timer_get_us(void);
+
 void	enable_interrupts  (void);
 int	disable_interrupts (void);
 
@@ -597,17 +773,17 @@ void mii_init (void);
 /* $(CPU)/.../lcd.c */
 ulong	lcd_setmem (ulong);
 
-/* $(CPU)/.../vfd.c */
-ulong	vfd_setmem (ulong);
-
 /* $(CPU)/.../video.c */
 ulong	video_setmem (ulong);
 
 /* arch/$(ARCH)/lib/cache.c */
+void	enable_caches(void);
 void	flush_cache   (unsigned long, unsigned long);
+void	flush_dcache_all(void);
 void	flush_dcache_range(unsigned long start, unsigned long stop);
 void	invalidate_dcache_range(unsigned long start, unsigned long stop);
-
+void	invalidate_dcache_all(void);
+void	invalidate_icache_all(void);
 
 /* arch/$(ARCH)/lib/ticks.S */
 unsigned long long get_ticks(void);
@@ -624,40 +800,42 @@ int gunzip(void *, int, unsigned char *, unsigned long *);
 int zunzip(void *dst, int dstlen, unsigned char *src, unsigned long *lenp,
 						int stoponerr, int offset);
 
-/* lib/net_utils.c */
-#include <net.h>
-static inline IPaddr_t getenv_IPaddr (char *var)
-{
-	return (string_to_ip(getenv(var)));
-}
-
 /* lib/qsort.c */
 void qsort(void *base, size_t nmemb, size_t size,
 	   int(*compar)(const void *, const void *));
+int strcmp_compar(const void *, const void *);
 
 /* lib/time.c */
 void	udelay        (unsigned long);
+void mdelay(unsigned long);
+
+/* lib/uuid.c */
+void uuid_str_to_bin(const char *uuid, unsigned char *out);
+int uuid_str_valid(const char *uuid);
 
 /* lib/vsprintf.c */
-ulong	simple_strtoul(const char *cp,char **endp,unsigned int base);
-unsigned long long	simple_strtoull(const char *cp,char **endp,unsigned int base);
-long	simple_strtol(const char *cp,char **endp,unsigned int base);
-void	panic(const char *fmt, ...)
-		__attribute__ ((format (__printf__, 1, 2)));
-int	sprintf(char * buf, const char *fmt, ...)
-		__attribute__ ((format (__printf__, 2, 3)));
-int	vsprintf(char *buf, const char *fmt, va_list args);
+#include <vsprintf.h>
 
 /* lib/strmhz.c */
-char *	strmhz(char *buf, long hz);
+char *	strmhz(char *buf, unsigned long hz);
 
 /* lib/crc32.c */
 #include <u-boot/crc.h>
 
+/* lib/rand.c */
+#if defined(CONFIG_RANDOM_MACADDR) || \
+	defined(CONFIG_BOOTP_RANDOM_DELAY) || \
+	defined(CONFIG_CMD_LINK_LOCAL)
+#define RAND_MAX -1U
+void srand(unsigned int seed);
+unsigned int rand(void);
+unsigned int rand_r(unsigned int *seedp);
+#endif
+
 /* common/console.c */
 int	console_init_f(void);	/* Before relocation; uses the serial  stuff	*/
 int	console_init_r(void);	/* After  relocation; uses the console stuff	*/
-int	console_assign (int file, char *devname);	/* Assign the console	*/
+int	console_assign(int file, const char *devname);	/* Assign the console	*/
 int	ctrlc (void);
 int	had_ctrlc (void);	/* have we had a Control-C since last clear? */
 void	clear_ctrlc (void);	/* clear the Control-C condition */
@@ -700,6 +878,20 @@ void	fputc(int file, const char c);
 int	ftstc(int file);
 int	fgetc(int file);
 
+/* lib/gzip.c */
+int gzip(void *dst, unsigned long *lenp,
+		unsigned char *src, unsigned long srclen);
+int zzip(void *dst, unsigned long *lenp, unsigned char *src,
+		unsigned long srclen, int stoponerr,
+		int (*func)(unsigned long, unsigned long));
+
+/* lib/net_utils.c */
+#include <net.h>
+static inline IPaddr_t getenv_IPaddr(char *var)
+{
+	return string_to_ip(getenv(var));
+}
+
 /*
  * CONSOLE multiplexing.
  */
@@ -712,10 +904,12 @@ int	pcmcia_init (void);
 #ifdef CONFIG_STATUS_LED
 # include <status_led.h>
 #endif
-/*
- * Board-specific Platform code can reimplement show_boot_progress () if needed
- */
-void show_boot_progress(int val);
+
+#include <bootstage.h>
+
+#ifdef CONFIG_SHOW_ACTIVITY
+void show_activity(int arg);
+#endif
 
 /* Multicore arch functions */
 #ifdef CONFIG_MP
@@ -725,7 +919,32 @@ int cpu_disable(int nr);
 int cpu_release(int nr, int argc, char * const argv[]);
 #endif
 
+/* Define a null map_sysmem() if the architecture doesn't use it */
+# ifndef CONFIG_ARCH_MAP_SYSMEM
+static inline void *map_sysmem(phys_addr_t paddr, unsigned long len)
+{
+	return (void *)(uintptr_t)paddr;
+}
+
+static inline void unmap_sysmem(const void *vaddr)
+{
+}
+
+static inline phys_addr_t map_to_sysmem(void *ptr)
+{
+	return (phys_addr_t)(uintptr_t)ptr;
+}
+# endif
+
 #endif /* __ASSEMBLY__ */
+
+#ifdef CONFIG_PPC
+/*
+ * Has to be included outside of the #ifndef __ASSEMBLY__ section.
+ * Otherwise might lead to compilation errors in assembler files.
+ */
+#include <asm/cache.h>
+#endif
 
 /* Put only stuff here that the assembler can digest */
 
@@ -743,13 +962,21 @@ int cpu_release(int nr, int argc, char * const argv[]);
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-#define ROUND(a,b)		(((a) + (b)) & ~((b) - 1))
+#define ROUND(a,b)		(((a) + (b) - 1) & ~((b) - 1))
 #define DIV_ROUND(n,d)		(((n) + ((d)/2)) / (d))
 #define DIV_ROUND_UP(n,d)	(((n) + (d) - 1) / (d))
 #define roundup(x, y)		((((x) + ((y) - 1)) / (y)) * (y))
 
 #define ALIGN(x,a)		__ALIGN_MASK((x),(typeof(x))(a)-1)
 #define __ALIGN_MASK(x,mask)	(((x)+(mask))&~(mask))
+
+/*
+ * ARCH_DMA_MINALIGN is defined in asm/cache.h for each architecture.  It
+ * is used to align DMA buffers.
+ */
+#ifndef __ASSEMBLY__
+#include <asm/cache.h>
+#endif
 
 /*
  * The ALLOC_CACHE_ALIGN_BUFFER macro is used to allocate a buffer on the
@@ -803,10 +1030,17 @@ int cpu_release(int nr, int argc, char * const argv[]);
  * of a function scoped static buffer.  It can not be used to create a cache
  * line aligned global buffer.
  */
-#define ALLOC_ALIGN_BUFFER(type, name, size, align)			\
-	char __##name[ROUND(size * sizeof(type), align) + (align - 1)];	\
+#define PAD_COUNT(s, pad) ((s - 1) / pad + 1)
+#define PAD_SIZE(s, pad) (PAD_COUNT(s, pad) * pad)
+#define ALLOC_ALIGN_BUFFER_PAD(type, name, size, align, pad)		\
+	char __##name[ROUND(PAD_SIZE(size * sizeof(type), pad), align)  \
+		      + (align - 1)];					\
 									\
 	type *name = (type *) ALIGN((uintptr_t)__##name, align)
+#define ALLOC_ALIGN_BUFFER(type, name, size, align)		\
+	ALLOC_ALIGN_BUFFER_PAD(type, name, size, align, 1)
+#define ALLOC_CACHE_ALIGN_BUFFER_PAD(type, name, size, pad)		\
+	ALLOC_ALIGN_BUFFER_PAD(type, name, size, ARCH_DMA_MINALIGN, pad)
 #define ALLOC_CACHE_ALIGN_BUFFER(type, name, size)			\
 	ALLOC_ALIGN_BUFFER(type, name, size, ARCH_DMA_MINALIGN)
 
@@ -817,10 +1051,15 @@ int cpu_release(int nr, int argc, char * const argv[]);
  */
 #define DEFINE_ALIGN_BUFFER(type, name, size, align)			\
 	static char __##name[roundup(size * sizeof(type), align)]	\
-			__attribute__((aligned(align)));				\
+			__aligned(align);				\
 									\
 	static type *name = (type *)__##name
 #define DEFINE_CACHE_ALIGN_BUFFER(type, name, size)			\
 	DEFINE_ALIGN_BUFFER(type, name, size, ARCH_DMA_MINALIGN)
+
+/* Pull in stuff for the build system */
+#ifdef DO_DEPS_ONLY
+# include <environment.h>
+#endif
 
 #endif	/* __COMMON_H_ */

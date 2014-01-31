@@ -84,6 +84,7 @@
 	MVGBE_TX_BURST_SIZE_16_64BIT)
 
 /* Default port serial control value */
+#ifndef PORT_SERIAL_CONTROL_VALUE
 #define PORT_SERIAL_CONTROL_VALUE		( \
 	MVGBE_FORCE_LINK_PASS			| \
 	MVGBE_DIS_AUTO_NEG_FOR_DUPLX		| \
@@ -101,6 +102,7 @@
 	MVGBE_CLR_EXT_LOOPBACK			| \
 	MVGBE_SET_FULL_DUPLEX_MODE		| \
 	MVGBE_DIS_FLOW_CTRL_TX_RX_IN_FULL_DUPLEX)
+#endif
 
 /* Tx WRR confoguration macros */
 #define PORT_MAX_TRAN_UNIT	0x24	/* MTU register (default) 9KByte */
@@ -306,10 +308,17 @@
 #define EBAR_TARGET_GUNIT			0x00000007
 
 /* Window attrib */
+#if defined(CONFIG_DOVE)
+#define EBAR_DRAM_CS0				0x00000000
+#define EBAR_DRAM_CS1				0x00000000
+#define EBAR_DRAM_CS2				0x00000000
+#define EBAR_DRAM_CS3				0x00000000
+#else
 #define EBAR_DRAM_CS0				0x00000E00
 #define EBAR_DRAM_CS1				0x00000D00
 #define EBAR_DRAM_CS2				0x00000B00
 #define EBAR_DRAM_CS3				0x00000700
+#endif
 
 /* DRAM Target interface */
 #define EBAR_DRAM_NO_CACHE_COHERENCY		0x00000000

@@ -19,6 +19,7 @@
  */
 
 #include <common.h>
+#include <linux/compiler.h>
 #include <asm/arch/s3c24x0_cpu.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -27,15 +28,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define UART_NR	S3C24X0_UART0
 
 #elif defined(CONFIG_SERIAL2)
-# if defined(CONFIG_TRAB)
-#  error "TRAB supports only CONFIG_SERIAL1"
-# endif
 #define UART_NR	S3C24X0_UART1
 
 #elif defined(CONFIG_SERIAL3)
-# if defined(CONFIG_TRAB)
-#  error "TRAB supports only CONFIG_SERIAL1"
-# endif
 #define UART_NR	S3C24X0_UART2
 
 #else
@@ -43,8 +38,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #endif
 
 #include <asm/io.h>
-
-#if defined(CONFIG_SERIAL_MULTI)
 #include <serial.h>
 
 /* Multi serial device functions */
@@ -74,19 +67,16 @@ DECLARE_GLOBAL_DATA_PTR;
 		serial_puts_dev(port, s); \
 	}
 
-#define INIT_S3C_SERIAL_STRUCTURE(port, name, bus) { \
-	name, \
-	bus, \
-	s3serial##port##_init, \
-	NULL,\
-	s3serial##port##_setbrg, \
-	s3serial##port##_getc, \
-	s3serial##port##_tstc, \
-	s3serial##port##_putc, \
-	s3serial##port##_puts, \
+#define INIT_S3C_SERIAL_STRUCTURE(port, __name) {	\
+	.name	= __name,				\
+	.start	= s3serial##port##_init,		\
+	.stop	= NULL,					\
+	.setbrg	= s3serial##port##_setbrg,		\
+	.getc	= s3serial##port##_getc,		\
+	.tstc	= s3serial##port##_tstc,		\
+	.putc	= s3serial##port##_putc,		\
+	.puts	= s3serial##port##_puts,		\
 }
-
-#endif /* CONFIG_SERIAL_MULTI */
 
 #ifdef CONFIG_HWFLOW
 static int hwflow;
@@ -106,18 +96,10 @@ void _serial_setbrg(const int dev_index)
 		/* Delay */ ;
 }
 
-#if defined(CONFIG_SERIAL_MULTI)
 static inline void serial_setbrg_dev(unsigned int dev_index)
 {
 	_serial_setbrg(dev_index);
 }
-#else
-void serial_setbrg(void)
-{
-	_serial_setbrg(UART_NR);
-}
-#endif
-
 
 /* Initialise the serial port. The settings are always 8 data bits, no parity,
  * 1 stop bit, no start bits.
@@ -157,16 +139,6 @@ static int serial_init_dev(const int dev_index)
 	return (0);
 }
 
-#if !defined(CONFIG_SERIAL_MULTI)
-/* Initialise the serial port. The settings are always 8 data bits, no parity,
- * 1 stop bit, no start bits.
- */
-int serial_init(void)
-{
-	return serial_init_dev(UART_NR);
-}
-#endif
-
 /*
  * Read a single byte from the serial port. Returns 1 on success, 0
  * otherwise. When the function is succesfull, the character read is
@@ -182,17 +154,10 @@ int _serial_getc(const int dev_index)
 	return readb(&uart->urxh) & 0xff;
 }
 
-#if defined(CONFIG_SERIAL_MULTI)
 static inline int serial_getc_dev(unsigned int dev_index)
 {
 	return _serial_getc(dev_index);
 }
-#else
-int serial_getc(void)
-{
-	return _serial_getc(UART_NR);
-}
-#endif
 
 #ifdef CONFIG_HWFLOW
 int hwflow_onoff(int on)
@@ -252,18 +217,10 @@ void _serial_putc(const char c, const int dev_index)
 		serial_putc('\r');
 }
 
-#if defined(CONFIG_SERIAL_MULTI)
 static inline void serial_putc_dev(unsigned int dev_index, const char c)
 {
 	_serial_putc(c, dev_index);
 }
-#else
-void serial_putc(const char c)
-{
-	_serial_putc(c, UART_NR);
-}
-#endif
-
 
 /*
  * Test whether a character is in the RX buffer
@@ -275,17 +232,10 @@ int _serial_tstc(const int dev_index)
 	return readl(&uart->utrstat) & 0x1;
 }
 
-#if defined(CONFIG_SERIAL_MULTI)
 static inline int serial_tstc_dev(unsigned int dev_index)
 {
 	return _serial_tstc(dev_index);
 }
-#else
-int serial_tstc(void)
-{
-	return _serial_tstc(UART_NR);
-}
-#endif
 
 void _serial_puts(const char *s, const int dev_index)
 {
@@ -294,26 +244,37 @@ void _serial_puts(const char *s, const int dev_index)
 	}
 }
 
-#if defined(CONFIG_SERIAL_MULTI)
 static inline void serial_puts_dev(int dev_index, const char *s)
 {
 	_serial_puts(s, dev_index);
 }
-#else
-void serial_puts(const char *s)
-{
-	_serial_puts(s, UART_NR);
-}
-#endif
 
-#if defined(CONFIG_SERIAL_MULTI)
 DECLARE_S3C_SERIAL_FUNCTIONS(0);
 struct serial_device s3c24xx_serial0_device =
-INIT_S3C_SERIAL_STRUCTURE(0, "s3ser0", "S3UART1");
+INIT_S3C_SERIAL_STRUCTURE(0, "s3ser0");
 DECLARE_S3C_SERIAL_FUNCTIONS(1);
 struct serial_device s3c24xx_serial1_device =
-INIT_S3C_SERIAL_STRUCTURE(1, "s3ser1", "S3UART2");
+INIT_S3C_SERIAL_STRUCTURE(1, "s3ser1");
 DECLARE_S3C_SERIAL_FUNCTIONS(2);
 struct serial_device s3c24xx_serial2_device =
-INIT_S3C_SERIAL_STRUCTURE(2, "s3ser2", "S3UART3");
-#endif /* CONFIG_SERIAL_MULTI */
+INIT_S3C_SERIAL_STRUCTURE(2, "s3ser2");
+
+__weak struct serial_device *default_serial_console(void)
+{
+#if defined(CONFIG_SERIAL1)
+	return &s3c24xx_serial0_device;
+#elif defined(CONFIG_SERIAL2)
+	return &s3c24xx_serial1_device;
+#elif defined(CONFIG_SERIAL3)
+	return &s3c24xx_serial2_device;
+#else
+#error "CONFIG_SERIAL? missing."
+#endif
+}
+
+void s3c24xx_serial_initialize(void)
+{
+	serial_register(&s3c24xx_serial0_device);
+	serial_register(&s3c24xx_serial1_device);
+	serial_register(&s3c24xx_serial2_device);
+}

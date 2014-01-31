@@ -71,7 +71,6 @@
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1		/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0		/* PHY address			*/
-#define CONFIG_NET_MULTI
 
 #define CONFIG_RTC_M48T35A	1		/* ST Electronics M48 timekeeper */
 #define CONFIG_DTT_LM75     1                /* ON Semi's LM75 */
@@ -121,7 +120,6 @@
 #define CONFIG_SYS_PROMPT		"Wave7Optics> " /* Monitor Command Prompt	*/
 #undef  CONFIG_SYS_HUSH_PARSER				/* No hush parse for U-Boot       */
 #ifdef  CONFIG_SYS_HUSH_PARSER
-#define CONFIG_SYS_PROMPT_HUSH_PS2     "> "
 #endif
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_SYS_CBSIZE		1024		/* Console I/O Buffer Size	*/
@@ -163,6 +161,7 @@
 #define PCI_HOST_AUTO		2		/* detected via arbiter enable	*/
 
 #define CONFIG_PCI				/* include pci support		*/
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_HOST		PCI_HOST_AUTO	/* select pci host function	*/
 #define CONFIG_PCI_PNP				/* pci plug-and-play		*/
 /* resource configuration	*/

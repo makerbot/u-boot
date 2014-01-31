@@ -48,7 +48,6 @@ checkcpu(void)
 {
 	sys_info_t sysinfo;
 	uint pvr, svr;
-	uint ver;
 	uint major, minor;
 	char buf1[32], buf2[32];
 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
@@ -57,7 +56,6 @@ checkcpu(void)
 	uint msscr0 = mfspr(MSSCR0);
 
 	svr = get_svr();
-	ver = SVR_SOC_VER(svr);
 	major = SVR_MAJ(svr);
 	minor = SVR_MIN(svr);
 
@@ -69,7 +67,7 @@ checkcpu(void)
 	}
 	puts("CPU:   ");
 
-	cpu = gd->cpu;
+	cpu = gd->arch.cpu;
 
 	puts(cpu->name);
 
@@ -77,11 +75,10 @@ checkcpu(void)
 	puts("Core:  ");
 
 	pvr = get_pvr();
-	ver = PVR_E600_VER(pvr);
 	major = PVR_E600_MAJ(pvr);
 	minor = PVR_E600_MIN(pvr);
 
-	printf("E600 Core %d", (msscr0 & 0x20) ? 1 : 0 );
+	printf("e600 Core %d", (msscr0 & 0x20) ? 1 : 0);
 	if (gur->pordevsr & MPC86xx_PORDEVSR_CORE1TE)
 		puts("\n    Core1Translation Enabled");
 	debug(" (MSSCR0=%x, PORDEVSR=%x)", msscr0, gur->pordevsr);
@@ -123,8 +120,7 @@ checkcpu(void)
 }
 
 
-void
-do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	volatile ccsr_gur_t *gur = &immap->im_gur;
@@ -137,6 +133,8 @@ do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	while (1)
 		;
+
+	return 1;
 }
 
 

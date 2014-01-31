@@ -34,10 +34,11 @@
  * Include common defines/options for all AMCC eval boards
  */
 #define CONFIG_HOSTNAME		iocon
-#define CONFIG_IDENT_STRING	" iocon 0.03"
+#define CONFIG_IDENT_STRING	" iocon 0.04"
 #include "amcc-common.h"
 
-#define CONFIG_BOARD_EARLY_INIT_F	/* call board_early_init_f */
+#define CONFIG_BOARD_EARLY_INIT_F
+#define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_LAST_STAGE_INIT
 
 #define CONFIG_SYS_CLK_FREQ	33333333 /* external frequency to pll   */
@@ -47,6 +48,10 @@
  */
 #define PLLMR0_DEFAULT PLLMR0_266_133_66
 #define PLLMR1_DEFAULT PLLMR1_266_133_66
+
+#undef CONFIG_ZERO_BOOTDELAY_CHECK	/* ignore keypress on bootdelay==0 */
+#define CONFIG_AUTOBOOT_KEYED		/* use key strings to stop autoboot */
+#define CONFIG_AUTOBOOT_STOP_STR " "
 
 /* new uImage format support */
 #define CONFIG_FIT
@@ -129,6 +134,12 @@ int fpga_gpio_get(int pin);
 #define I2C_SCL(bit)	if (bit) fpga_gpio_set(0x0020); \
 			else fpga_gpio_clear(0x0020)
 #define I2C_DELAY	udelay(25)	/* 1/4 I2C clock duration */
+
+/*
+ * OSD hardware
+ */
+#define CONFIG_SYS_MPC92469AC
+#define CONFIG_SYS_CH7301
 
 /*
  * FLASH organization
@@ -231,13 +242,15 @@ int fpga_gpio_get(int pin);
 #define CONFIG_SYS_EBC_PB1AP		0x92015480
 #define CONFIG_SYS_EBC_PB1CR		0xFB858000
 
-/* Memory Bank 2 (FPGA) initialization */
-#define CONFIG_SYS_FPGA_BASE		0x7f100000
+/* Memory Bank 2 (FPGA0) initialization */
+#define CONFIG_SYS_FPGA0_BASE		0x7f100000
 #define CONFIG_SYS_EBC_PB2AP		0x02825080
-#define CONFIG_SYS_EBC_PB2CR		(CONFIG_SYS_FPGA_BASE | 0x1a000)
+#define CONFIG_SYS_EBC_PB2CR		(CONFIG_SYS_FPGA0_BASE | 0x1a000)
 
-#define CONFIG_SYS_FPGA_RFL_LOW		0x0000
-#define CONFIG_SYS_FPGA_RFL_HIGH	0x00fe
+#define CONFIG_SYS_FPGA_BASE(k)		CONFIG_SYS_FPGA0_BASE
+#define CONFIG_SYS_FPGA_DONE(k)		0x0010
+
+#define CONFIG_SYS_FPGA_COUNT		1
 
 /* Memory Bank 3 (Latches) initialization */
 #define CONFIG_SYS_LATCH_BASE		0x7f200000
@@ -248,5 +261,12 @@ int fpga_gpio_get(int pin);
 #define CONFIG_SYS_LATCH0_BOOT		0xffff
 #define CONFIG_SYS_LATCH1_RESET		0xffff
 #define CONFIG_SYS_LATCH1_BOOT		0xffff
+
+/*
+ * OSD Setup
+ */
+#define CONFIG_SYS_MPC92469AC
+#define CONFIG_SYS_CH7301
+#define CONFIG_SYS_OSD_SCREENS		CONFIG_SYS_FPGA_COUNT
 
 #endif	/* __CONFIG_H */

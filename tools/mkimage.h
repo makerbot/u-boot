@@ -42,11 +42,25 @@
 #define debug(fmt,args...)
 #endif /* MKIMAGE_DEBUG */
 
+#define ARRAY_SIZE(x)		(sizeof(x) / sizeof((x)[0]))
+
+static inline void *map_sysmem(ulong paddr, unsigned long len)
+{
+	return (void *)(uintptr_t)paddr;
+}
+
+static inline ulong map_to_sysmem(void *ptr)
+{
+	return (ulong)(uintptr_t)ptr;
+}
+
 #define MKIMAGE_TMPFILE_SUFFIX		".tmp"
 #define MKIMAGE_MAX_TMPFILE_LEN		256
 #define MKIMAGE_DEFAULT_DTC_OPTIONS	"-I dts -O dtb -p 500"
 #define MKIMAGE_MAX_DTC_CMDLINE_LEN	512
 #define MKIMAGE_DTC			"dtc"   /* assume dtc is in $PATH */
+
+#define IH_ARCH_DEFAULT		IH_ARCH_INVALID
 
 /*
  * This structure defines all such variables those are initialized by
@@ -60,6 +74,7 @@ struct mkimage_params {
 	int lflag;
 	int vflag;
 	int xflag;
+	int skipcpy;
 	int os;
 	int arch;
 	int type;
@@ -68,9 +83,14 @@ struct mkimage_params {
 	unsigned int addr;
 	unsigned int ep;
 	char *imagename;
+	char *imagename2;
 	char *datafile;
 	char *imagefile;
 	char *cmdname;
+	const char *keydir;	/* Directory holding private keys */
+	const char *keydest;	/* Destination .dtb for public key */
+	const char *comment;	/* Comment to add to signature node */
+	int require_keys;	/* 1 to mark signing keys as 'required' */
 };
 
 /*
@@ -122,6 +142,13 @@ struct image_type_params {
 	int (*check_image_type) (uint8_t);
 	/* This callback function will be executed if fflag is defined */
 	int (*fflag_handle) (struct mkimage_params *);
+	/*
+	 * This callback function will be executed for variable size record
+	 * It is expected to build this header in memory and return its length
+	 * and a pointer to it
+	 */
+	int (*vrec_header) (struct mkimage_params *,
+		struct image_type_params *);
 	/* pointer to the next registered entry in linked list */
 	struct image_type_params *next;
 };
@@ -139,9 +166,14 @@ void mkimage_register (struct image_type_params *tparams);
  *
  * Supported image types init functions
  */
+void pbl_load_uboot(int fd, struct mkimage_params *mparams);
+void init_pbl_image_type(void);
+void init_ais_image_type(void);
 void init_kwb_image_type (void);
 void init_imx_image_type (void);
 void init_default_image_type (void);
 void init_fit_image_type (void);
+void init_ubl_image_type(void);
+void init_omap_image_type(void);
 
 #endif /* _MKIIMAGE_H_ */

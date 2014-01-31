@@ -45,7 +45,7 @@
 static int altera_validate (Altera_desc * desc, const char *fn);
 
 /* ------------------------------------------------------------------------- */
-int altera_load( Altera_desc *desc, void *buf, size_t bsize )
+int altera_load(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume a failure */
 
@@ -60,7 +60,7 @@ int altera_load( Altera_desc *desc, void *buf, size_t bsize )
 					__FUNCTION__);
 			ret_val = ACEX1K_load (desc, buf, bsize);
 #elif defined(CONFIG_FPGA_CYCLON2)
-			PRINTF ("%s: Launching the CYCLON II Loader...\n",
+			PRINTF ("%s: Launching the CYCLONE II Loader...\n",
 					__FUNCTION__);
 			ret_val = CYC2_load (desc, buf, bsize);
 #else
@@ -85,7 +85,7 @@ int altera_load( Altera_desc *desc, void *buf, size_t bsize )
 	return ret_val;
 }
 
-int altera_dump( Altera_desc *desc, void *buf, size_t bsize )
+int altera_dump(Altera_desc *desc, const void *buf, size_t bsize)
 {
 	int ret_val = FPGA_FAIL;	/* assume a failure */
 
@@ -215,7 +215,7 @@ int altera_info( Altera_desc *desc )
 
 static int altera_validate (Altera_desc * desc, const char *fn)
 {
-	int ret_val = FALSE;
+	int ret_val = false;
 
 	if (desc) {
 		if ((desc->family > min_altera_type) &&
@@ -223,7 +223,7 @@ static int altera_validate (Altera_desc * desc, const char *fn)
 			if ((desc->iface > min_altera_iface_type) &&
 				(desc->iface < max_altera_iface_type)) {
 				if (desc->size) {
-					ret_val = TRUE;
+					ret_val = true;
 				} else {
 					printf ("%s: NULL part size\n", fn);
 				}

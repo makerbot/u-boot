@@ -149,6 +149,7 @@
 #define UART_LSR                       0xFFC00414
 #define UART_SCR                       0xFFC0041C
 #define UART_RBR                       0xFFC00400 /* Receive Buffer */
+#define UART0_RBR                      UART_RBR
 #define UART_GCTL                      0xFFC00424
 #define SPT0_TX_CONFIG0                0xFFC00800
 #define SPT0_TX_CONFIG1                0xFFC00804
@@ -438,12 +439,6 @@
 #define L1_INST_SRAM 0xFFA08000 /* 0xFFA08000 -> 0xFFA0BFFF Instruction Bank A SRAM */
 #define L1_INST_SRAM_SIZE (0xFFA0BFFF - 0xFFA08000 + 1)
 #define L1_INST_SRAM_END (L1_INST_SRAM + L1_INST_SRAM_SIZE)
-#define L1_SRAM_SCRATCH 0xFFB00000 /* 0xFFB00000 -> 0xFFB00FFF Scratchpad SRAM */
-#define L1_SRAM_SCRATCH_SIZE (0xFFB00FFF - 0xFFB00000 + 1)
-#define L1_SRAM_SCRATCH_END (L1_SRAM_SCRATCH + L1_SRAM_SCRATCH_SIZE)
-#define SYSMMR_BASE 0xFFC00000 /* 0xFFC00000 -> 0xFFFFFFFF MMR registers */
-#define SYSMMR_BASE_SIZE (0xFFFFFFFF - 0xFFC00000 + 1)
-#define SYSMMR_BASE_END (SYSMMR_BASE + SYSMMR_BASE_SIZE)
 #endif
 
 #endif /* __BFIN_DEF_ADSP_BF531_proc__ */

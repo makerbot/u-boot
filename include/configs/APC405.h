@@ -103,7 +103,6 @@
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
 
-#define CONFIG_NET_MULTI	1
 #undef  CONFIG_HAS_ETH1
 
 #define CONFIG_PPC4xx_EMAC
@@ -219,6 +218,7 @@
 #define PCI_HOST_AUTO		2	/* detected via arbiter enable  */
 
 #define CONFIG_PCI			/* include pci support          */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_HOST PCI_HOST_FORCE	/* select pci host function     */
 #define CONFIG_PCI_PNP			/* do pci plug-and-play         */
 					/* resource configuration       */

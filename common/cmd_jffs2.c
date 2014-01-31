@@ -281,7 +281,7 @@ static inline u32 get_part_sector_size_nor(struct mtdids *id, struct part_info *
 	flash = &flash_info[id->num];
 
 	start_phys = flash->start[0] + part->offset;
-	end_phys = start_phys + part->size;
+	end_phys = start_phys + part->size - 1;
 
 	for (i = 0; i < flash->sector_count; i++) {
 		if (flash->start[i] >= end_phys)
@@ -525,11 +525,9 @@ int do_jffs2_fsload(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		if (size > 0) {
-			char buf[10];
 			printf("### %s load complete: %d bytes loaded to 0x%lx\n",
 				fsname, size, offset);
-			sprintf(buf, "%x", size);
-			setenv("filesize", buf);
+			setenv_hex("filesize", size);
 		} else {
 			printf("### %s LOAD ERROR<%x> for %s!\n", fsname, size, filename);
 		}

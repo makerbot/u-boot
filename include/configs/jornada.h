@@ -32,8 +32,7 @@
 #define CONFIG_SYS_TEXT_BASE		0xC1F00000
 
 /* we will never enable dcache, because we have to setup MMU first */
-#define CONFIG_SYS_NO_DCACHE
-#undef CONFIG_USE_IRQ
+#define CONFIG_SYS_DCACHE_OFF
 
 /* Console setting */
 
@@ -88,12 +87,6 @@
 #define CONFIG_SYS_CPUSPEED		0x0a /* core clock 206MHz */
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 19200, 38400, 57600, 115200 }
 
-/*-----------------------------------------------------------------------
- * Stack sizes
- *
- * The stack sizes are set up in start.S using the settings below
- */
-#define CONFIG_STACKSIZE		(128*1024)	/* regular stack */
 #define CONFIG_SYS_FLASH_CFI		1
 #define CONFIG_FLASH_CFI_DRIVER	1
 #define CONFIG_FLASH_CFI_WIDTH		FLASH_CFI_32BIT

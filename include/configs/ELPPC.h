@@ -242,6 +242,7 @@
  * PCI stuff
  */
 #define CONFIG_PCI                                /* include pci support */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_PNP                            /* pci plug-and-play */
 #define CONFIG_PCI_HOST         PCI_HOST_AUTO
 #undef  CONFIG_PCI_SCAN_SHOW
@@ -348,7 +349,6 @@
 #endif
 #define L2_ENABLE   (L2_INIT | L2CR_L2E)
 
-#define CONFIG_NET_MULTI        /* Multi ethernet cards support */
 #define CONFIG_EEPRO100
 #define CONFIG_SYS_RX_ETH_BUFFER	8               /* use 8 rx buffer on eepro100  */
 #define CONFIG_EEPRO100_SROM_WRITE

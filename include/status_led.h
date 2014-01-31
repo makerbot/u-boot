@@ -72,22 +72,6 @@ void status_led_set  (int led, int state);
 
 # define STATUS_LED_BOOT	0		/* LED 0 used for boot status */
 
-/*****  ETX_094  ********************************************************/
-#elif defined(CONFIG_ETX094)
-
-# define STATUS_LED_PAR		im_ioport.iop_pdpar
-# define STATUS_LED_DIR		im_ioport.iop_pddir
-# undef  STATUS_LED_ODR
-# define STATUS_LED_DAT		im_ioport.iop_pddat
-
-# define STATUS_LED_BIT		0x00000001
-# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
-# define STATUS_LED_STATE	STATUS_LED_BLINKING
-
-# define STATUS_LED_ACTIVE	0		/* LED on for bit == 0	*/
-
-# define STATUS_LED_BOOT	0		/* LED 0 used for boot status */
-
 /*****  GEN860T  *********************************************************/
 #elif defined(CONFIG_GEN860T)
 
@@ -169,26 +153,6 @@ void status_led_set  (int led, int state);
 # define STATUS_LED_YELLOW	0
 # define STATUS_LED_GREEN	1
 # define STATUS_LED_BOOT	2		/* IDE LED used for boot status */
-
-/*****  LANTEC  *********************************************************/
-#elif defined(CONFIG_LANTEC)
-
-# define STATUS_LED_PAR		im_ioport.iop_pdpar
-# define STATUS_LED_DIR		im_ioport.iop_pddir
-# undef  STATUS_LED_ODR
-# define STATUS_LED_DAT		im_ioport.iop_pddat
-
-# if CONFIG_LATEC < 2
-#  define STATUS_LED_BIT	0x1000
-# else
-#  define STATUS_LED_BIT	0x0800
-# endif
-# define STATUS_LED_PERIOD	(CONFIG_SYS_HZ / 2)
-# define STATUS_LED_STATE	STATUS_LED_BLINKING
-
-# define STATUS_LED_ACTIVE	0		/* LED on for bit == 0 */
-
-# define STATUS_LED_BOOT	0		/* LED 0 used for boot status */
 
 /*****  ICU862   ********************************************************/
 #elif defined(CONFIG_ICU862)
@@ -308,12 +272,6 @@ void status_led_set  (int led, int state);
 /*****  STx XTc    ********************************************************/
 #elif defined(CONFIG_STXXTC)
 /* XXX empty just to avoid the error */
-/*****  sbc8240   ********************************************************/
-#elif defined(CONFIG_WRSBC8240)
-/* XXX empty just to avoid the error */
-/************************************************************************/
-#elif defined(CONFIG_NIOS2)
-/* XXX empty just to avoid the error */
 /************************************************************************/
 #elif defined(CONFIG_V38B)
 
@@ -357,24 +315,24 @@ extern void __led_set (led_id_t mask, int state);
  */
 #ifndef	__ASSEMBLY__
 extern void	coloured_LED_init (void);
-extern void	red_LED_on(void);
-extern void	red_LED_off(void);
-extern void	green_LED_on(void);
-extern void	green_LED_off(void);
-extern void	yellow_LED_on(void);
-extern void	yellow_LED_off(void);
-extern void	blue_LED_on(void);
-extern void	blue_LED_off(void);
+extern void	red_led_on(void);
+extern void	red_led_off(void);
+extern void	green_led_on(void);
+extern void	green_led_off(void);
+extern void	yellow_led_on(void);
+extern void	yellow_led_off(void);
+extern void	blue_led_on(void);
+extern void	blue_led_off(void);
 #else
 	.extern LED_init
-	.extern red_LED_on
-	.extern red_LED_off
-	.extern yellow_LED_on
-	.extern yellow_LED_off
-	.extern green_LED_on
-	.extern green_LED_off
-	.extern blue_LED_on
-	.extern blue_LED_off
+	.extern red_led_on
+	.extern red_led_off
+	.extern yellow_led_on
+	.extern yellow_led_off
+	.extern green_led_on
+	.extern green_led_off
+	.extern blue_led_on
+	.extern blue_led_off
 #endif
 
 #endif	/* CONFIG_STATUS_LED	*/

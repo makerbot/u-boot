@@ -44,12 +44,10 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	if (!spi_cs_is_valid(bus, cs))
 		return NULL;
 
-	ds = malloc(sizeof(*ds));
+	ds = spi_alloc_slave(struct davinci_spi_slave, bus, cs);
 	if (!ds)
 		return NULL;
 
-	ds->slave.bus = bus;
-	ds->slave.cs = cs;
 	ds->regs = (struct davinci_spi_regs *)CONFIG_SYS_SPI_BASE;
 	ds->freq = max_hz;
 
@@ -186,11 +184,12 @@ static int davinci_spi_write(struct spi_slave *slave, unsigned int len,
 	while (readl(&ds->regs->buf) & SPIBUF_TXFULL_MASK)
 		;
 
-	/* preload the TX buffer to avoid clock starvation */
+	/* preload the TX buf--NOPE
 	if (len > 2) {
 		writel(data1_reg_val | *txp++, &ds->regs->dat1);
 		len--;
 	}
+    */
 
 	/* keep writing 1 byte until only 1 byte left */
 	while ((len--) > 1)

@@ -109,7 +109,7 @@ static struct tag *setup_clock_tags(struct tag *params)
 	params->hdr.size = tag_size(tag_clock);
 	params->u.clock.clock_id = ACLOCK_BOOTCPU;
 	params->u.clock.clock_flags = 0;
-	params->u.clock.clock_hz = gd->cpu_hz;
+	params->u.clock.clock_hz = gd->arch.cpu_hz;
 
 #ifdef CONFIG_AT32AP7000
 	/*
@@ -165,6 +165,16 @@ static struct tag *setup_ethernet_tags(struct tag *params)
 	return params;
 }
 
+static struct tag *setup_boardinfo_tag(struct tag *params)
+{
+	params->hdr.tag = ATAG_BOARDINFO;
+	params->hdr.size = tag_size(tag_boardinfo);
+
+	params->u.boardinfo.board_number = gd->bd->bi_board_number;
+
+	return tag_next(params);
+}
+
 static void setup_end_tag(struct tag *params)
 {
 	params->hdr.tag = ATAG_NONE;
@@ -177,12 +187,21 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 	struct	tag *params, *params_start;
 	char	*commandline = getenv("bootargs");
 
+	/*
+	 * allow the PREP bootm subcommand, it is required for bootm to work
+	 *
+	 * TODO: Andreas Bießmann <andreas.devel@googlemail.com> refactor the
+	 * do_bootm_linux() for avr32
+	 */
+	if (flag & BOOTM_STATE_OS_PREP)
+		return 0;
+
 	if ((flag != 0) && (flag != BOOTM_STATE_OS_GO))
 		return 1;
 
 	theKernel = (void *)images->ep;
 
-	show_boot_progress (15);
+	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
 
 	params = params_start = (struct tag *)gd->bd->bi_boot_params;
 	params = setup_start_tag(params);
@@ -195,6 +214,7 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 	params = setup_commandline_tag(params, commandline);
 	params = setup_clock_tags(params);
 	params = setup_ethernet_tags(params);
+	params = setup_boardinfo_tag(params);
 	setup_end_tag(params);
 
 	printf("\nStarting kernel at %p (params at %p)...\n\n",

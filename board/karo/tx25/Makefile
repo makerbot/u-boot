@@ -25,8 +25,10 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).o
 
-COBJS	:= tx25.o
+ifdef CONFIG_SPL_BUILD
 SOBJS	:= lowlevel_init.o
+endif
+COBJS	:= tx25.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -34,12 +36,6 @@ SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(obj).depend $(OBJS) $(SOBJS)
 	$(call cmd_link_o_target, $(OBJS) $(SOBJS))
-
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

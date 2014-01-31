@@ -43,9 +43,10 @@ SECTIONS
   PROVIDE (erotext = .);
   .reloc   :
   {
-    KEEP(*(.got))
     _GOT2_TABLE_ = .;
     KEEP(*(.got2))
+    KEEP(*(.got))
+    PROVIDE(_GLOBAL_OFFSET_TABLE_ = . + 4);
     _FIXUP_TABLE_ = .;
     KEEP(*(.fixup))
   }
@@ -61,9 +62,11 @@ SECTIONS
   PROVIDE (edata = .);
 
   . = .;
-  __u_boot_cmd_start = .;
-  .u_boot_cmd : { *(.u_boot_cmd) }
-  __u_boot_cmd_end = .;
+
+  . = ALIGN(4);
+  .u_boot_list : {
+	KEEP(*(SORT(.u_boot_list*)));
+  }
 
 
   . = .;
@@ -86,7 +89,7 @@ SECTIONS
    *(COMMON)
    . = ALIGN(4);
   }
-  _end = . ;
+  __bss_end = . ;
   PROVIDE (end = .);
 }
 ENTRY(_start)

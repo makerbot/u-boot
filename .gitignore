@@ -10,27 +10,45 @@
 *.orig
 *.a
 *.o
+*.su
 *~
 *.swp
 *.patch
-*.s
+*.bin
+*.cfgtmp
+*.pyc
+
+# Build tree
+#/build-*
 
 #
 # Top-level generic files
 #
 
+/MLO
+/SPL
 /System.map
 /u-boot
 /u-boot.hex
+/u-boot.imx
+/u-boot-with-spl.imx
+/u-boot-with-nand-spl.imx
 /u-boot.map
-/u-boot.bin
 /u-boot.srec
 /u-boot.ldr
 /u-boot.ldr.hex
 /u-boot.ldr.srec
+/u-boot.img
+/u-boot.kwb
+/u-boot.sha1
+/u-boot.dis
 /u-boot.lds
-/u-boot-onenand.bin
-/u-boot-flexonenand.bin
+/u-boot.ubl
+/u-boot.ais
+/u-boot.dtb
+/u-boot.sb
+/u-boot.bd
+/u-boot.geany
 
 #
 # Generated files
@@ -40,6 +58,11 @@
 /LOG
 /errlog
 /reloc_off
+
+/include/generated/
+asm-offsets.s
+
+.sconsign.dblite
 
 # stgit generated dirs
 patches-*
@@ -60,7 +83,11 @@ cscope.*
 /ctags
 /etags
 
-# OneNAND IPL files
-/onenand_ipl/onenand-ipl*
-/onenand_ipl/board/*/onenand*
-/onenand_ipl/board/*/*.S
+# gnu global files
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+
+# spl ais files
+/spl/*.ais

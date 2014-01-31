@@ -2,12 +2,13 @@
 Imximage Boot Image generation using mkimage
 ---------------------------------------------
 
-This document describes how to set up a U-Boot image
-that can be booted by Freescale MX25, MX35 and MX51
-processors via internal boot mode.
+This document describes how to set up a U-Boot image that can be booted
+by Freescale MX25, MX35, MX51, MX53 and MX6 processors via internal boot
+mode.
 
 These processors can boot directly from NAND, SPI flash and SD card flash
-using its internal boot ROM support. They can boot from an internal
+using its internal boot ROM support. MX6 processors additionally support
+boot from NOR flash and SATA disks. All processors can boot from an internal
 UART, if booting from device media fails.
 Booting from NOR flash does not require to use this image type.
 
@@ -57,9 +58,34 @@ Configuration command line syntax:
 2. Following are the valid command strings and associated data strings:-
 	Command string		data string
 	--------------		-----------
-	BOOT_FROM		nand/spi/sd/onenand
+	IMXIMAGE_VERSION        1/2
+				1 is for mx25/mx35/mx51 compatible,
+				2 is for mx53/mx6 compatible,
+				others is invalid and error is generated.
+				This command need appear the fist before
+				other valid commands in configuration file.
+
+	BOOT_OFFSET		value
+
+				This command is parallel to BOOT_FROM and
+				is preferred over BOOT_FROM.
+
+				value:  Offset of the image header, this
+					value shall be set to one of the
+					values found in the file:
+						arch/arm/include/asm/\
+						imx-common/imximage.cfg
+				Example:
+				BOOT_OFFSET FLASH_OFFSET_STANDARD
+
+	BOOT_FROM		nand/spi/sd/onenand/nor/sata
+
+				This command is parallel to BOOT_OFFSET and
+				is to be deprecated in favor of BOOT_OFFSET.
+
 				Example:
 				BOOT_FROM spi
+
 	DATA			type address value
 
 				type: word=4, halfword=2, byte=1
@@ -69,8 +95,9 @@ Configuration command line syntax:
 				Example (write to IOMUXC):
 				DATA 4 0x73FA88a0 0x200
 
-The processor support up to 60 register programming commands. An error
-is generated if more commands are found in the configuration file.
+The processor support up to 60 register programming commands for IMXIMAGE_VERSION 1
+and 121 register programming commands for IMXIMAGE_VERSION 2.
+An error is generated if more commands are found in the configuration file.
 
 3. All commands are optional to program.
 

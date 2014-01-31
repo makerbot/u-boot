@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2003
- * David Müller ELSOFT AG Switzerland. d.mueller@elsoft.ch
+ * David MÃ¼ller ELSOFT AG Switzerland. d.mueller@elsoft.ch
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -342,16 +342,6 @@ struct s3c24x0_watchdog {
 	u32	wtdat;
 	u32	wtcnt;
 };
-
-
-/* IIC (see manual chapter 20) */
-struct s3c24x0_i2c {
-	u32	iiccon;
-	u32	iicstat;
-	u32	iicadd;
-	u32	iicds;
-};
-
 
 /* IIS (see manual chapter 21) */
 struct s3c24x0_i2s {

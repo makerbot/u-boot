@@ -1,7 +1,7 @@
 /*
  * Davinci MMC Controller Defines - Based on Linux davinci_mmc.c
  *
- * Copyright (C) Texas Instruments.
+ * Copyright (C) 2010 Texas Instruments Incorporated
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

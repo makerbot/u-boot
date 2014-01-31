@@ -25,21 +25,40 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(ARCH).o
 
+## Build a couple of necessary functions into a private libgcc
+LIBGCC	= $(obj)libgcc.o
+GLSOBJS	+= ashldi3.o
+GLSOBJS	+= ashrdi3.o
+GLSOBJS	+= lshrdi3.o
+LGOBJS	:= $(addprefix $(obj),$(GLSOBJS))
+
 SOBJS-y	+=
 
 COBJS-y	+= board.o
 ifeq ($(CONFIG_QEMU_MIPS),y)
-COBJS-y	+= bootm_qemu_mips.o
+COBJS-$(CONFIG_CMD_BOOTM) += bootm_qemu_mips.o
 else
-COBJS-y	+= bootm.o
+COBJS-$(CONFIG_CMD_BOOTM) += bootm.o
 endif
-COBJS-y	+= time.o
 
 SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
 
+# Always build libmips.o
+TARGETS	:= $(LIB)
+
+# Build private libgcc only when asked for
+ifdef USE_PRIVATE_LIBGCC
+TARGETS	+= $(LIBGCC)
+endif
+
+all:	$(TARGETS)
+
 $(LIB):	$(obj).depend $(OBJS)
 	$(call cmd_link_o_target, $(OBJS))
+
+$(LIBGCC): $(obj).depend $(LGOBJS)
+	$(call cmd_link_o_target, $(LGOBJS))
 
 #########################################################################
 

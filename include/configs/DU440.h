@@ -93,7 +93,6 @@
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
 #undef CONFIG_SYS_EXT_SERIAL_CLOCK
 #define CONFIG_BAUDRATE		115200
-#define CONFIG_SERIAL_MULTI     1
 
 #define CONFIG_SYS_BAUDRATE_TABLE						\
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200}
@@ -269,7 +268,6 @@ int du440_phy_addr(int devnum);
 #define CONFIG_HAS_ETH0
 #define CONFIG_SYS_RX_ETH_BUFFER	128
 
-#define CONFIG_NET_MULTI	1
 #define CONFIG_HAS_ETH1		1	/* add support for "eth1addr"	*/
 #define CONFIG_PHY1_ADDR	du440_phy_addr(1)
 
@@ -359,6 +357,7 @@ int du440_phy_addr(int devnum);
  * PCI stuff
  */
 #define CONFIG_PCI			/* include pci support	        */
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_PNP			/* do (not) pci plug-and-play   */
 #define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup  */
 #define CONFIG_SYS_PCI_TARGBASE       0x80000000 /* PCIaddr mapped to CONFIG_SYS_PCI_MEMBASE*/

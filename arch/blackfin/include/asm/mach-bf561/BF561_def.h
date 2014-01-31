@@ -690,6 +690,7 @@
 #define PPI1_FRAME                     0xFFC01310
 #define UART_THR                       0xFFC00400
 #define UART_RBR                       0xFFC00400
+#define UART0_RBR                      UART_RBR
 #define UART_DLL                       0xFFC00400
 #define UART_DLH                       0xFFC00404
 #define UART_IER                       0xFFC00404
@@ -708,14 +709,11 @@
 #define EBIU_SDBCTL                    0xFFC00A14
 #define EBIU_SDRRC                     0xFFC00A18
 #define EBIU_SDSTAT                    0xFFC00A1C
+
 #define L1_INST_SRAM 0xFFA00000 /* 0xFFA00000 -> 0xFFA03FFF Instruction Bank A SRAM */
 #define L1_INST_SRAM_SIZE (0xFFA03FFF - 0xFFA00000 + 1)
 #define L1_INST_SRAM_END (L1_INST_SRAM + L1_INST_SRAM_SIZE)
-#define L1_SRAM_SCRATCH 0xFFB00000 /* 0xFFB00000 -> 0xFFB00FFF Scratchpad SRAM */
-#define L1_SRAM_SCRATCH_SIZE (0xFFB00FFF - 0xFFB00000 + 1)
-#define L1_SRAM_SCRATCH_END (L1_SRAM_SCRATCH + L1_SRAM_SCRATCH_SIZE)
-#define SYSMMR_BASE 0xFFC00000 /* 0xFFC00000 -> 0xFFFFFFFF MMR registers */
-#define SYSMMR_BASE_SIZE (0xFFFFFFFF - 0xFFC00000 + 1)
-#define SYSMMR_BASE_END (SYSMMR_BASE + SYSMMR_BASE_SIZE)
+
+#define COREB_L1_CODE_START       0xFF600000
 
 #endif /* __BFIN_DEF_ADSP_BF561_proc__ */

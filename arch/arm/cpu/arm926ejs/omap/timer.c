@@ -36,14 +36,19 @@
  */
 
 #include <common.h>
+#include <asm/io.h>
 
-#define TIMER_LOAD_VAL 0xffffffff
+#define TIMER_CLOCK	(CONFIG_SYS_CLK_FREQ / (2 << CONFIG_SYS_PTV))
+#define TIMER_LOAD_VAL	0xffffffff
 
 /* macro to read the 32 bit timer */
-#define READ_TIMER (*(volatile ulong *)(CONFIG_SYS_TIMERBASE+8))
+#define READ_TIMER	readl(CONFIG_SYS_TIMERBASE+8) \
+			/ (TIMER_CLOCK / CONFIG_SYS_HZ)
 
-static ulong timestamp;
-static ulong lastdec;
+DECLARE_GLOBAL_DATA_PTR;
+
+#define timestamp gd->arch.tbl
+#define lastdec gd->arch.lastinc
 
 int timer_init (void)
 {
@@ -63,20 +68,9 @@ int timer_init (void)
 /*
  * timer without interrupts
  */
-
-void reset_timer (void)
-{
-	reset_timer_masked ();
-}
-
 ulong get_timer (ulong base)
 {
 	return get_timer_masked () - base;
-}
-
-void set_timer (ulong t)
-{
-	timestamp = t;
 }
 
 /* delay x useconds AND preserve advance timestamp value */
@@ -123,7 +117,8 @@ ulong get_timer_masked (void)
 		 * (TLV-now) amount of time after passing though -1
 		 * nts = new "advancing time stamp"...it could also roll and cause problems.
 		 */
-		timestamp += lastdec + TIMER_LOAD_VAL - now;
+		timestamp += lastdec + (TIMER_LOAD_VAL / (TIMER_CLOCK /
+					CONFIG_SYS_HZ)) - now;
 	}
 	lastdec = now;
 
@@ -169,8 +164,5 @@ unsigned long long get_ticks(void)
  */
 ulong get_tbclk (void)
 {
-	ulong tbclk;
-
-	tbclk = CONFIG_SYS_HZ;
-	return tbclk;
+	return CONFIG_SYS_HZ;
 }

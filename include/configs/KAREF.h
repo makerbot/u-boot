@@ -96,7 +96,6 @@
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
 #define CONFIG_SYS_NS16550_CLK		get_serial_clock()
-#define CONFIG_SERIAL_MULTI   1
 #define CONFIG_BAUDRATE	      9600
 
 #define CONFIG_SYS_BAUDRATE_TABLE  \
@@ -164,7 +163,6 @@
  *----------------------------------------------------------------------*/
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII	      1		     /* MII PHY management	*/
-#define CONFIG_NET_MULTI      1
 #define CONFIG_PHY_ADDR	      0xff	     /* no phy on EMAC0		*/
 #define CONFIG_PHY1_ADDR      0xff	     /* no phy on EMAC1		*/
 #define CONFIG_PHY2_ADDR      0x08	     /* PHY addr, MGMT, EMAC2	*/
@@ -224,7 +222,6 @@
 #define CONFIG_SYS_PROMPT	      "KaRefDes=> "  /* Monitor Command Prompt	*/
 
 #define CONFIG_SYS_HUSH_PARSER	       1	     /* HUSH for ext'd cli	*/
-#define CONFIG_SYS_PROMPT_HUSH_PS2    "> "
 
 
 /*-----------------------------------------------------------------------
@@ -271,6 +268,7 @@
  *----------------------------------------------------------------------*/
 /* General PCI */
 #define CONFIG_PCI			     /* include pci support	*/
+#define CONFIG_PCI_INDIRECT_BRIDGE	/* indirect PCI bridge support */
 #define CONFIG_PCI_PNP			     /* do pci plug-and-play	*/
 #define CONFIG_PCI_SCAN_SHOW		     /* show pci devices	*/
 #define CONFIG_SYS_PCI_TARGBASE      (CONFIG_SYS_PCI_MEMBASE)

@@ -27,22 +27,22 @@ NAND_SPL := y
 
 include $(TOPDIR)/config.mk
 
+nandobj	:= $(OBJTREE)/nand_spl/
+
 LDSCRIPT= $(TOPDIR)/nand_spl/board/$(BOARDDIR)/u-boot.lds
-LDFLAGS	= -Bstatic -T $(nandobj)u-boot.lds \
-	   -Ttext $(CONFIG_SYS_TEXT_BASE_SPL) $(PLATFORM_LDFLAGS)
+LDFLAGS := -T $(nandobj)u-boot.lds -Ttext $(CONFIG_SYS_TEXT_BASE_SPL) \
+	   $(LDFLAGS) $(LDFLAGS_FINAL)
 AFLAGS	+= -DCONFIG_NAND_SPL
 CFLAGS	+= -DCONFIG_NAND_SPL
 
 SOBJS	= start.o ticks.o
-COBJS	= nand_boot_fsl_elbc.o $(BOARD).o sdram.o ns16550.o nand_init.o \
+COBJS	= nand_boot_fsl_elbc.o $(BOARD).o sdram.o ns16550.o spl_minimal.o \
 	  time.o cache.o
 
 SRCS	:= $(addprefix $(obj),$(SOBJS:.o=.S) $(COBJS:.o=.c))
 OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
 __OBJS	:= $(SOBJS) $(COBJS)
-LNDIR	:= $(OBJTREE)/nand_spl/board/$(BOARDDIR)
-
-nandobj	:= $(OBJTREE)/nand_spl/
+LNDIR	:= $(nandobj)board/$(BOARDDIR)
 
 ALL	= $(nandobj)u-boot-spl $(nandobj)u-boot-spl.bin $(nandobj)u-boot-spl-16k.bin
 
@@ -84,9 +84,9 @@ $(obj)ns16550.c:
 	@rm -f $@
 	ln -s $(SRCTREE)/drivers/serial/ns16550.c $@
 
-$(obj)nand_init.c:
+$(obj)spl_minimal.c:
 	@rm -f $@
-	ln -s $(SRCTREE)/arch/powerpc/cpu/mpc83xx/nand_init.c $@
+	ln -s $(SRCTREE)/arch/powerpc/cpu/mpc83xx/spl_minimal.c $@
 
 $(obj)cache.c:
 	@rm -f $@

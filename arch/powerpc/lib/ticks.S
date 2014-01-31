@@ -47,19 +47,27 @@ get_ticks:
  */
 	.globl	wait_ticks
 wait_ticks:
-	mflr	r8		/* save link register */
-	mr	r7, r3		/* save tick count */
+	stwu	r1, -16(r1)
+	mflr	r0		/* save link register */
+	stw	r0, 20(r1)	/* Use r0 or GDB will be unhappy */
+	stw	r14, 12(r1)	/* save used registers */
+	stw	r15, 8(r1)
+	mr	r14, r3		/* save tick count */
 	bl	get_ticks	/* Get start time */
 
 	/* Calculate end time */
-	addc    r7, r4, r7	/* Compute end time lower */
-	addze	r6, r3		/*     and end time upper */
+	addc    r14, r4, r14	/* Compute end time lower */
+	addze	r15, r3		/*     and end time upper */
 
 	WATCHDOG_RESET		/* Trigger watchdog, if needed */
 1:	bl	get_ticks	/* Get current time */
-	subfc	r4, r4, r7	/* Subtract current time from end time */
-	subfe.	r3, r3, r6
+	subfc	r4, r4, r14	/* Subtract current time from end time */
+	subfe.	r3, r3, r15
 	bge	1b		/* Loop until time expired */
 
-	mtlr	r8		/* restore link register */
+	lwz     r15, 8(r1)	/* restore saved registers */
+	lwz     r14, 12(r1)
+	lwz     r0, 20(r1)
+	addi	r1,r1,16
+	mtlr	r0
 	blr
