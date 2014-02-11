@@ -155,16 +155,29 @@
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_REVISION_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_BOOTDELAY	1
-#define CONFIG_EXTRA_ENV_SETTINGS \
-    "setbootargs=setenv bootargs console=ttyS1,115200n8 noinitrd ip=off " \
-    "mem=128M@0xC0000000 rootdelay=1 rw ubi.mtd=o,4096 rootfstype=ubifs " \
-    "root=ubi0:${current_root_volume} init=/linuxrc eth=${macaddr}\0" \
-    "current_root_volume=root0\0" \
-    "current_kernel_addr=0x100000\0" \
-
+#define CONFIG_BOOTDELAY 1
 #define CONFIG_BOOTCOMMAND \
-    "run setbootargs; sf probe; sf read 0xC0000000 ${current_kernel_addr} 0x300000; bootm 0xC0000000"
+    "run setbootargs; sf probe 0:0 30000000; sf read 0xC0000000 ${current_ker" \
+        "nel_addr} 0x300000; bootm 0xC0000000; sf read 0xC0000000 ${current_k" \
+        "ernel_addr} 0x300000; bootm 0xC0000000; run swap_root; run swap_kern" \
+        "el; saveenv; run setbootargs; sf read 0xC0000000 ${current_kernel_ad" \
+        "dr} 0x300000; bootm 0xC0000000"
+#define CONFIG_EXTRA_ENV_SETTINGS \
+    "backup_root_volume=root1\0" \
+    "swap_root=temp=${current_root_volume}; setenv current_root_volume ${back" \
+        "up_root_volume}; setenv backup_root_volume ${temp}\0" \
+    "current_root_volume=root0\0" \
+    "swap_kernel=temp=${current_kernel_addr}; setenv current_kernel_addr ${ba" \
+        "ckup_kernel_addr}; setenv backup_kernel_addr ${temp}\0" \
+    "current_kernel_addr=0x100000\0" \
+    "setbootargs=setenv bootargs mem=128M@0xC0000000 console=ttyS1,115200n8 n" \
+        "oinitrd init=/linuxrc ro ip=off ubi.mtd=0,4096 ubi.fm_autoconvert=1 " \
+        "rootfstype=ubifs root=ubi0:${current_root_volume} rootwait USB_ISERI" \
+        "AL=${iserial} eth=${macaddr} MACHINE_TYPE=${machine_type} USB_PID=${" \
+        "pid}\0" \
+    "backup_kernel_addr=0x800000\0" \
+    "bootargs=\0"
+
 
 /*
  * U-Boot commands
