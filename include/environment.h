@@ -149,14 +149,7 @@ extern unsigned long nand_env_oob_offset;
 
 #include "compiler.h"
 
-#ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
-# define ENV_HEADER_SIZE	(sizeof(uint32_t) + 1)
-
-# define ACTIVE_FLAG   1
-# define OBSOLETE_FLAG 0
-#else
-# define ENV_HEADER_SIZE	(sizeof(uint32_t))
-#endif
+#define ENV_HEADER_SIZE	(sizeof(uint32_t))
 
 #if defined(CONFIG_CMD_SAVEENV) && !defined(CONFIG_ENV_IS_NOWHERE)
 extern char *env_name_spec;
@@ -166,9 +159,6 @@ extern char *env_name_spec;
 
 typedef struct environment_s {
 	uint32_t	crc;		/* CRC32 over data bytes	*/
-#ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
-	unsigned char	flags;		/* active/obsolete flags	*/
-#endif
 	unsigned char	data[ENV_SIZE]; /* Environment data		*/
 } env_t;
 

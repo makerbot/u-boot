@@ -110,8 +110,9 @@
 #define CONFIG_SYS_SPI_U_BOOT_OFFS 0x80000
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_OFFSET          0xF00000  /* Top 1 meg of NOR flash */
+#define CONFIG_ENV_OFFSET_REDUND   0xF10000  /* Top 1 meg of NOR flash */
 #define CONFIG_ENV_SIZE            (1 << 16)
-#define CONFIG_ENV_SECT_SIZE       0x10000   /* TODO: use subsectors */
+#define CONFIG_ENV_SECT_SIZE       0x10000
 
 /*
  * Network & Ethernet Configuration
