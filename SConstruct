@@ -41,6 +41,10 @@ env.AddMethod(mb_recursive_file_glob, 'MBRecursiveFileGlob')
 ubootDir = os.path.abspath(str(Dir('#')))
 baseDir = os.path.abspath(os.path.join(ubootDir, os.pardir))
 
+AddOption('--birdwing-cross-compile-tools', '--bwcct', dest='bwcct',
+    default=os.path.join(baseDir, 'Birdwing-Cross-Compile-Tools')
+)
+
 subenv = os.environ.copy()
 
 def path_add(env, key, path):
@@ -50,7 +54,7 @@ def path_add(env, key, path):
         env[key] = path
 
 # U-boot uses the angstrom toolchain
-angstrom = os.path.join(baseDir, 'Birdwing-Cross-Compile-Tools', 'angstrom', 'arm')
+angstrom = os.path.join(GetOption('bwcct'), 'angstrom', 'arm')
 tool_prefix = 'arm-angstrom-linux-gnueabi'
 env.PrependENVPath('PATH', os.path.join(angstrom, 'bin'))
 env.PrependENVPath('CPATH', os.path.join(angstrom, tool_prefix, 'usr', 'include'))
