@@ -149,7 +149,7 @@ void env_relocate_spec(void)
 		goto out;
 	}
 
-	if (crc32(0, tmp_env->data, ENV_SIZE) != tmp_env->crc) {
+	if (crc32(0, tmp_env->data, ENV_SIZE) == tmp_env->crc) {
 		gd->env_valid = 1;
 	} else {
 		ret = spi_flash_read(env_flash, CONFIG_ENV_OFFSET_REDUND,
@@ -159,7 +159,7 @@ void env_relocate_spec(void)
 			goto out;
 		}
 		if (crc32(0, tmp_env->data, ENV_SIZE) != tmp_env->crc) {
-			set_default_env("!bad CRC");
+			set_default_env("!both CRC failed");
 			goto out;
 		}
 		gd->env_valid = 2;
